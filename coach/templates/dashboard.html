@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>跑力与能力看板</title>
+<style>
+:root {
+  --bg: #ffffff; --panel: #f6f7f9; --text: #1d2126; --muted: #69717c; --faint: #a3aab3; --grid: #e4e7eb;
+  --accent: #2f6fdf; --aerobic: #2e9d6a; --threshold: #c9822b; --speed: #c2455a; --endurance: #7a5cc4;
+  --bar: #8fa6c8; --bar2: #c9d3e2; --warn: #c2455a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17191c; --panel: #1f2226; --text: #e3e6ea; --muted: #99a1ab; --faint: #5d646d; --grid: #2d3137;
+    --accent: #6d9cf0; --aerobic: #4fbf8c; --threshold: #e0a153; --speed: #e06a7e; --endurance: #a58ae6;
+    --bar: #56709a; --bar2: #384559; --warn: #e06a7e;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "PingFang SC", "Hiragino Sans", sans-serif; }
+main { max-width: 1240px; margin: 0 auto; padding: 24px 20px 60px; }
+h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+h2 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
+.sub { color: var(--muted); font-size: 12px; }
+.warn { color: var(--warn); }
+.kpis { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr) 1.2fr; gap: 12px; margin: 18px 0; }
+.kpi { background: var(--panel); border-radius: 8px; padding: 12px 14px; }
+.kpi .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi.main .v { font-size: 34px; color: var(--accent); }
+.kpi .l { color: var(--muted); font-size: 12px; }
+.kpi .s { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 8px 0 12px; }
+.seg button { border: 1px solid var(--grid); background: var(--bg); color: var(--text); padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+.seg button:first-child { border-radius: 6px 0 0 6px; } .seg button:last-child { border-radius: 0 6px 6px 0; }
+.seg button + button { border-left: none; }
+.seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.toggles label { margin-right: 12px; font-size: 13px; cursor: pointer; user-select: none; }
+.toggles .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 2px; vertical-align: -1px; }
+section.panel { margin-bottom: 22px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 28px; }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; }
+.cap { color: var(--faint); font-size: 11px; margin: 4px 0 0; }
+#tip { position: fixed; pointer-events: none; background: var(--panel); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 9px; font-size: 12px; display: none; z-index: 10; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#tip b { font-weight: 600; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 24px; }
+#detail { background: var(--panel); border-radius: 8px; padding: 14px 16px; align-self: start; position: sticky; top: 12px; font-size: 13px; }
+#detail table, table.runs { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+#detail td { padding: 2px 4px; } #detail td:first-child { color: var(--muted); }
+table.runs th, table.runs td { padding: 5px 6px; text-align: right; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
+table.runs th { color: var(--muted); font-weight: 500; position: sticky; top: 0; background: var(--bg); }
+table.runs td:nth-child(-n+2), table.runs th:nth-child(-n+2) { text-align: left; }
+table.runs tr { cursor: pointer; } table.runs tr:hover td { background: var(--panel); }
+table.runs tr.sel td { background: var(--panel); font-weight: 600; }
+.dimrow { display: grid; grid-template-columns: 44px 1fr 40px; gap: 6px; align-items: center; margin: 3px 0; }
+.dimbar { height: 6px; background: var(--grid); border-radius: 3px; position: relative; }
+.dimbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+@media (max-width: 1000px) { .kpis { grid-template-columns: repeat(3, 1fr); } .grid2, .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>跑力与能力看板</h1>
+  <div class="sub" id="meta"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="controls">
+    <div class="seg" id="range">
+      <button data-r="12w">近12周</button><button data-r="season">赛季</button><button data-r="all">全部</button>
+    </div>
+    <div class="toggles" id="toggles"></div>
+  </div>
+  <div class="layout">
+    <div>
+      <section class="panel">
+        <h2>跑力随时间变化（VDOT 刻度）</h2>
+        <div class="chart" id="c-score"></div>
+        <p class="cap">线 = 状态跑力（42 天加权、半衰期 14 天）；点 = 单次跑步的维度值（空心 = 低置信度，如跑步机）。点击任意点查看明细。虚线：破3所需与 PB 对应的 VDOT。Garmin 时代静息心率口径不同，仅作参考。</p>
+      </section>
+      <div class="grid2">
+        <section><h2>周跑量（km）与最长一次</h2><div class="chart" id="c-vol"></div><p class="cap">柱 = 周跑量；点 = 当周最长一次跑。</p></section>
+        <section><h2>强度分布（每周各区间分钟数）</h2><div class="chart" id="c-int"></div><p class="cap">Z1–2 / Z3 / Z4+，按跑步心率区间时间。</p></section>
+        <section><h2>有氧指数 AeI（HR150 等效配速，越低越快）</h2><div class="chart" id="c-aei"></div><p class="cap">点 = 单次轻松/长距离跑；线 = 周中位。未做天气修正，夏季偏慢。</p></section>
+        <section><h2>跑姿：轻松跑触地时间（ms）与步频（spm）</h2><div class="chart" id="c-form"></div><p class="cap">周中位；Apple Watch 与 Garmin 口径不同。</p></section>
+        <section><h2>HRV 与静息心率</h2><div class="chart" id="c-well"></div><p class="cap">每日值；三角 = 主观反馈疼痛 ≥1（高度 = 疼痛分数，右轴）。</p></section>
+        <section><h2>环境：热修正幅度（%）</h2><div class="chart" id="c-heat"></div><p class="cap">每次跑步按温度+露点（Hadley）换算的速度修正；越高说明当天越热越湿。</p></section>
+      </div>
+      <section class="panel" style="margin-top:22px">
+        <h2>近期跑步评分</h2>
+        <div style="max-height:420px;overflow:auto"><table class="runs" id="runs"></table></div>
+      </section>
+    </div>
+    <aside id="detail"></aside>
+  </div>
+</main>
+<div id="tip"></div>
+<script>
+const DATA = /*__DATA__*/null;
+const $ = (s) => document.querySelector(s);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const DAY = 86400000;
+const T = (d) => new Date(d + "T12:00:00").getTime();
+const DIMS = [
+  { k: "composite", r: "comp", name: "综合", color: "--accent", w: 2.6 },
+  { k: "aerobic", r: "A", name: "有氧", color: "--aerobic", w: 1.6 },
+  { k: "threshold", r: "T", name: "阈值", color: "--threshold", w: 1.6 },
+  { k: "speed", r: "S", name: "速度", color: "--speed", w: 1.6 },
+  { k: "endurance", r: "E", name: "耐力", color: "--endurance", w: 1.6 },
+];
+const state = { range: localStorage.getItem("dash.range") || "12w", dims: JSON.parse(localStorage.getItem("dash.dims") || '{"composite":true,"aerobic":true,"threshold":true,"speed":true,"endurance":false}'), dots: localStorage.getItem("dash.dots") === "1", sel: null };
+
+const gapTo = (v) => (v == null ? "-" : `${v >= DATA.need ? "+" : "−"}${Math.abs(v - DATA.need).toFixed(1)}`);
+const fmtPace = (s) => (s == null ? "-" : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`);
+const fmtDur = (s) => { if (s == null) return "-"; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
+const f1 = (v) => (v == null ? "-" : v.toFixed(1));
+const sgn = (v) => (v == null ? "" : (v >= 0 ? "+" : "") + v.toFixed(1));
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function xRange() {
+  const today = T(DATA.generated.slice(0, 10));
+  if (state.range === "12w") return [today - 84 * DAY, today + 2 * DAY];
+  if (state.range === "season") return [T(DATA.season_start), T(DATA.race.date) + DAY];
+  return [T(DATA.daily.length ? DATA.daily[0].d : DATA.runs[0].d), today + 2 * DAY];
+}
+
+// ------------------------------------------------------------ chart engine
+function niceTicks(lo, hi, n = 5) {
+  const span = hi - lo || 1, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= n) || mag * 10;
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+function xTicks(x0, x1) {
+  const span = (x1 - x0) / DAY, out = [];
+  const d = new Date(x0); d.setHours(12, 0, 0, 0);
+  if (span <= 120) { d.setDate(d.getDate() + ((8 - d.getDay()) % 7)); for (; d.getTime() <= x1; d.setDate(d.getDate() + 14)) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
+  else { d.setDate(1); d.setMonth(d.getMonth() + 1); const stepM = span > 500 ? 3 : 1; for (; d.getTime() <= x1; d.setMonth(d.getMonth() + stepM)) out.push([d.getTime(), d.getMonth() === 0 ? `${d.getFullYear()}` : `${d.getMonth() + 1}月`]); }
+  return out;
+}
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+
+function chart(host, o) {
+  host.innerHTML = "";
+  const W = host.clientWidth || 600, H = o.height || 220, P = { l: 44, r: o.y2 ? 40 : 14, t: 10, b: 24 };
+  const [x0, x1] = o.x;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H }, host);
+  const xs = (t) => P.l + ((t - x0) / (x1 - x0)) * (W - P.l - P.r);
+  const inX = (t) => t >= x0 && t <= x1;
+  const vis = (s) => s.pts.filter((p) => inX(p.x) && p.y != null);
+  let ys = [];
+  o.series.forEach((s) => { if (!s.y2) vis(s).forEach((p) => { ys.push(p.y); if (p.y0 != null) ys.push(p.y0); }); });
+  (o.refs || []).forEach((r) => ys.push(r.y));
+  if (!ys.length) { el("text", { x: W / 2, y: H / 2, "text-anchor": "middle" }, svg).textContent = "该范围内无数据"; return; }
+  let lo = o.yMin ?? Math.min(...ys), hi = o.yMax ?? Math.max(...ys);
+  const padY = (hi - lo) * 0.08 || 1; if (o.yMin == null) lo -= padY; if (o.yMax == null) hi += padY;
+  const yv = (v) => (o.invert ? P.t + ((v - lo) / (hi - lo)) * (H - P.t - P.b) : H - P.b - ((v - lo) / (hi - lo)) * (H - P.t - P.b));
+  let y2lo = 0, y2hi = 1, yv2 = null;
+  if (o.y2) { const v2 = []; o.series.forEach((s) => { if (s.y2) vis(s).forEach((p) => v2.push(p.y)); }); y2lo = o.y2.min ?? Math.min(...v2, 0); y2hi = o.y2.max ?? Math.max(...v2, 1); yv2 = (v) => H - P.b - ((v - y2lo) / (y2hi - y2lo || 1)) * (H - P.t - P.b); }
+  const g = css("--grid"), muted = css("--muted");
+  niceTicks(lo, hi).forEach((v) => { const y = yv(v); el("line", { x1: P.l, x2: W - P.r, y1: y, y2: y, stroke: g }, svg); el("text", { x: P.l - 6, y: y + 4, "text-anchor": "end" }, svg).textContent = o.fmt ? o.fmt(v) : v; });
+  if (o.y2) niceTicks(y2lo, y2hi, 4).forEach((v) => { el("text", { x: W - P.r + 6, y: yv2(v) + 4 }, svg).textContent = o.y2.fmt ? o.y2.fmt(v) : v; });
+  xTicks(x0, x1).forEach(([t, lbl]) => { el("text", { x: xs(t), y: H - 6, "text-anchor": "middle" }, svg).textContent = lbl; });
+  if (o.yLabel) el("text", { x: 4, y: P.t + 2, "font-size": 10 }, svg).textContent = o.yLabel;
+  (o.vlines || []).forEach((v) => { if (!inX(v.x)) return; el("line", { x1: xs(v.x), x2: xs(v.x), y1: P.t, y2: H - P.b, stroke: muted, "stroke-dasharray": "2 3", opacity: 0.6 }, svg); el("text", { x: xs(v.x) + 4, y: P.t + 10, "font-size": 10 }, svg).textContent = v.label; });
+  let lastLbl = { x: Infinity, y: -Infinity };
+  [...(o.refs || [])].sort((a, b) => b.y - a.y).forEach((r) => {
+    const y = yv(r.y), col = r.color ? css(r.color) : muted;
+    el("line", { x1: P.l, x2: W - P.r, y1: y, y2: y, stroke: col, "stroke-dasharray": "5 4", "stroke-width": r.color ? 1.4 : 1, opacity: r.color ? 1 : 0.7 }, svg);
+    let lx = W - P.r - 4;
+    if (Math.abs(y - lastLbl.y) < 12 && lastLbl.x === lx) lx = lastLbl.x - 110;
+    el("text", { x: lx, y: y - 4, "text-anchor": "end", "font-size": 10, style: `fill:${col}` }, svg).textContent = r.label;
+    lastLbl = { x: lx, y };
+  });
+  const pxPerDay = (W - P.l - P.r) / ((x1 - x0) / DAY);
+  const hits = [];
+  o.series.forEach((s) => {
+    const col = css(s.color), pts = vis(s), Y = s.y2 ? yv2 : yv;
+    if (s.type === "bar") {
+      const bw = Math.max(2, pxPerDay * (s.days || 7) * 0.72);
+      pts.forEach((p) => { const ya = Y(p.y), yb = Y(p.y0 ?? (s.y2 ? y2lo : Math.max(lo, 0))); el("rect", { x: xs(p.x) - bw / 2, y: Math.min(ya, yb), width: bw, height: Math.max(0.5, Math.abs(yb - ya)), fill: col, opacity: s.opacity ?? 0.85 }, svg); hits.push({ s, p, px: xs(p.x), py: ya, bar: true }); });
+    } else if (s.type === "line") {
+      let d = "", prev = null;
+      pts.forEach((p) => { const gap = prev && p.x - prev.x > (s.gapDays || 10) * DAY; d += (d && !gap ? "L" : "M") + xs(p.x).toFixed(1) + "," + Y(p.y).toFixed(1); prev = p; hits.push({ s, p, px: xs(p.x), py: Y(p.y), line: true }); });
+      el("path", { d, fill: "none", stroke: col, "stroke-width": s.w || 1.6, "stroke-linejoin": "round", "stroke-dasharray": s.dash || "" }, svg);
+    } else {
+      pts.forEach((p) => {
+        const r = s.r || 3, x = xs(p.x), y = Y(p.y);
+        const shape = s.tri ? el("path", { d: `M${x},${y - r - 1}L${x + r},${y + r}L${x - r},${y + r}Z`, fill: col }, svg)
+          : el("circle", { cx: x, cy: y, r: p.sel ? r + 2.5 : r, fill: p.hollow ? css("--bg") : col, stroke: col, "stroke-width": p.sel ? 2.5 : 1.2, opacity: s.opacity ?? 0.9 }, svg);
+        hits.push({ s, p, px: x, py: y, dot: true });
+      });
+    }
+  });
+  const guide = el("line", { y1: P.t, y2: H - P.b, stroke: muted, opacity: 0, "stroke-width": 1 }, svg);
+  const tip = $("#tip");
+  const nearest = (mx, my) => {
+    const dots = hits.filter((h) => h.dot && h.s.click);
+    let best = null, bd = 144;
+    dots.forEach((h) => { const d = (h.px - mx) ** 2 + (h.py - my) ** 2; if (d < bd) { bd = d; best = h; } });
+    return best;
+  };
+  svg.addEventListener("mousemove", (ev) => {
+    const r = svg.getBoundingClientRect(), mx = (ev.clientX - r.left) * (W / r.width), my = (ev.clientY - r.top) * (H / r.height);
+    if (mx < P.l || mx > W - P.r) { tip.style.display = "none"; guide.setAttribute("opacity", 0); return; }
+    const near = nearest(mx, my);
+    const rows = [];
+    let xAt;
+    if (near && o.dotTip) { rows.push(o.dotTip(near.p)); xAt = near.p.x; }
+    else {
+      xAt = x0 + ((mx - P.l) / (W - P.l - P.r)) * (x1 - x0);
+      const byS = new Map();
+      hits.forEach((h) => { if (h.dot && !h.s.tipAll) return; const d = Math.abs(h.p.x - xAt); const lim = (h.bar ? 4 : h.line ? 6 : 3) * DAY; if (d > lim) return; const b = byS.get(h.s); if (!b || d < b.d) byS.set(h.s, { d, h }); });
+      if (!byS.size) { tip.style.display = "none"; guide.setAttribute("opacity", 0); return; }
+      const first = [...byS.values()][0].h.p; xAt = first.x;
+      rows.push(`<b>${new Date(xAt).toISOString().slice(0, 10)}${o.xLabel ? o.xLabel(first) : ""}</b>`);
+      byS.forEach(({ h }, s) => rows.push(`<span style="color:${css(s.color)}">■</span> ${esc(s.name)}：${s.fmt ? s.fmt(h.p) : (o.fmt ? o.fmt(h.p.y) : h.p.y)}`));
+    }
+    guide.setAttribute("x1", xs(xAt)); guide.setAttribute("x2", xs(xAt)); guide.setAttribute("opacity", 0.35);
+    tip.innerHTML = rows.join("<br>"); tip.style.display = "block";
+    const tw = tip.offsetWidth; tip.style.left = Math.min(window.innerWidth - tw - 8, ev.clientX + 14) + "px"; tip.style.top = ev.clientY + 14 + "px";
+    svg.style.cursor = near ? "pointer" : "default";
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; guide.setAttribute("opacity", 0); });
+  svg.addEventListener("click", (ev) => { const r = svg.getBoundingClientRect(); const near = nearest((ev.clientX - r.left) * (W / r.width), (ev.clientY - r.top) * (H / r.height)); if (near && near.s.click) near.s.click(near.p); });
+}
+
+// ------------------------------------------------------------ sections
+const runById = Object.fromEntries(DATA.runs.map((r) => [r.id, r]));
+
+function renderMeta() {
+  const n = DATA.now, r = DATA.race;
+  let s = `${esc(r.name)} ${r.date}｜距比赛 ${r.days} 天｜破3目标 ${fmtDur(r.goal_s)}（${fmtPace(r.goal_s / 42.195)}/km）｜数据同步 ${esc(DATA.synced || "-")}，生成 ${esc(DATA.generated)}｜天气：${esc(DATA.location)}（Open-Meteo）`;
+  if (DATA.weather_error) s += `｜<span class="warn">天气获取失败：${esc(DATA.weather_error)}</span>`;
+  $("#meta").innerHTML = s;
+}
+
+function renderKpis() {
+  const d = DATA.now.dims, c = d.composite || {};
+  const age = (x) => (x ? (x.stale ? `<span class="warn">${x.age} 天前（旧）</span>` : `最近证据 ${x.age} 天前`) : "");
+  const rd = DATA.readiness || {};
+  let h = `<div class="kpi main"><div class="l">状态综合跑力</div><div class="v">${f1(c.v)}</div><div class="s">距破3 ${gapTo(c.v)}｜4周 ${sgn(c.delta)}｜破3进度 ${rd.progress != null ? Math.round(rd.progress) + "%" : "-"}（难度加权）</div></div>`;
+  DIMS.slice(1).forEach((m) => { const x = d[m.k]; h += `<div class="kpi"><div class="l"><span class="sw" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${css(m.color)}"></span> ${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距破3 ${gapTo(x.v)}｜4周 ${sgn(x.delta)}` : "无证据"}<br>${age(x)}</div></div>`; });
+  const n = DATA.now;
+  h += `<div class="kpi"><div class="l">全马预测</div><div class="v" style="font-size:18px">${fmtDur(n.marathon_daniels)}</div><div class="s">Daniels（状态跑力，乐观上限）<br>Tanda ${fmtDur(n.marathon_tanda)}（8周周均 ${n.k8} km）</div></div>`;
+  $("#kpis").innerHTML = h;
+}
+
+function renderToggles() {
+  $("#toggles").innerHTML = DIMS.map((m) => `<label><input type="checkbox" data-k="${m.k}" ${state.dims[m.k] ? "checked" : ""}><span class="sw" style="background:${css(m.color)}"></span>${m.name}</label>`).join("")
+    + `<label style="margin-left:12px;color:var(--muted)"><input type="checkbox" data-k="__dots" ${state.dots ? "checked" : ""}>显示单次跑步点</label>`;
+  $("#toggles").querySelectorAll("input").forEach((i) => i.addEventListener("change", () => {
+    if (i.dataset.k === "__dots") { state.dots = i.checked; localStorage.setItem("dash.dots", i.checked ? "1" : "0"); }
+    else { state.dims[i.dataset.k] = i.checked; localStorage.setItem("dash.dims", JSON.stringify(state.dims)); }
+    renderCharts();
+  }));
+  $("#range").querySelectorAll("button").forEach((b) => { b.classList.toggle("on", b.dataset.r === state.range); b.onclick = () => { state.range = b.dataset.r; localStorage.setItem("dash.range", state.range); renderToggles(); renderCharts(); }; });
+}
+
+const runTip = (r) => `<b>${r.d} ${esc(r.label)} ${r.km}km</b><br>综合 ${f1(r.comp)}（${r.conf || "-"}）｜有氧 ${f1(r.A)} 阈值 ${f1(r.T)} 速度 ${f1(r.S)} 耐力 ${f1(r.E)}<br>配速 ${fmtPace(r.pace)} HR ${r.hr ?? "-"}｜${r.temp != null ? `${r.temp}°C 露点 ${r.dew}°C 修正 +${r.heat}%` : "无天气"}`;
+
+function renderCharts() {
+  const x = xRange();
+  const series = [];
+  DIMS.forEach((m) => {
+    if (!state.dims[m.k]) return;
+    series.push({ name: m.name + "（状态）", color: m.color, type: "line", w: m.w, gapDays: 3, dash: m.k === "endurance" ? "4 3" : "",
+      pts: DATA.daily.map((d) => ({ x: T(d.d), y: d[m.k] ?? null, stale: d[m.k + "_stale"] })), fmt: (p) => f1(p.y) + (p.stale ? "（旧）" : "") });
+    if (state.dots || state.sel) series.push({ name: m.name, color: m.color, type: "dot", r: m.k === "composite" ? 3.6 : 2.4, opacity: m.k === "composite" ? 0.95 : 0.7, click: selectRun,
+      pts: DATA.runs.filter((r) => r[m.r] != null && (state.dots || r.id === state.sel)).map((r) => ({ x: T(r.d), y: r[m.r], run: r, hollow: r.conf === "低", sel: r.id === state.sel })) });
+  });
+  const refs = [{ y: DATA.need, label: `破3 ${DATA.need}`, color: "--accent" }].concat(DATA.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}` })));
+  chart($("#c-score"), { x, series, refs, height: 320, fmt: (v) => (+v).toFixed(0), dotTip: (p) => runTip(p.run), vlines: [{ x: T(DATA.apple_since), label: "Apple Watch" }, { x: T(DATA.race.date), label: "比赛日" }] });
+
+  const W = DATA.weeks.map((w) => ({ ...w, x: T(w.ws) + 3 * DAY }));
+  chart($("#c-vol"), { x, height: 200, fmt: (v) => v, series: [
+    { name: "周跑量", color: "--bar", type: "bar", pts: W.map((w) => ({ x: w.x, y: w.km, w })), fmt: (p) => `${p.y} km / ${p.w.n} 次` },
+    { name: "最长一次", color: "--accent", type: "dot", r: 3, tipAll: true, pts: W.filter((w) => w.long > 0).map((w) => ({ x: w.x, y: w.long })), fmt: (p) => `${p.y} km` },
+  ] });
+  chart($("#c-int"), { x, height: 200, fmt: (v) => v, series: [
+    { name: "Z1–2", color: "--bar2", type: "bar", pts: W.map((w) => ({ x: w.x, y0: 0, y: w.low })), fmt: (p) => `${p.y} 分钟` },
+    { name: "Z3", color: "--threshold", type: "bar", pts: W.map((w) => ({ x: w.x, y0: w.low, y: w.low + w.mid, v: w.mid })), fmt: (p) => `${p.v} 分钟` },
+    { name: "Z4+", color: "--speed", type: "bar", pts: W.map((w) => ({ x: w.x, y0: w.low + w.mid, y: w.low + w.mid + w.high, v: w.high })), fmt: (p) => `${p.v} 分钟` },
+  ] });
+  chart($("#c-aei"), { x, height: 200, invert: true, fmt: fmtPace, series: [
+    { name: "单次", color: "--aerobic", type: "dot", r: 2.4, opacity: 0.55, click: selectRun, pts: DATA.runs.filter((r) => r.aei && (r.grp === "easy" || r.grp === "long")).map((r) => ({ x: T(r.d), y: r.aei, run: r })) },
+    { name: "周中位", color: "--aerobic", type: "line", w: 2, gapDays: 15, pts: W.filter((w) => w.aei).map((w) => ({ x: w.x, y: w.aei })), fmt: (p) => fmtPace(p.y) + "/km" },
+  ], dotTip: (p) => `<b>${p.run.d} ${esc(p.run.label)}</b><br>AeI ${fmtPace(p.run.aei)}/km｜${p.run.temp ?? "-"}°C` });
+  chart($("#c-form"), { x, height: 200, fmt: (v) => v, y2: { fmt: (v) => v }, series: [
+    { name: "触地时间 ms", color: "--threshold", type: "line", w: 2, gapDays: 15, pts: W.filter((w) => w.gct).map((w) => ({ x: w.x, y: w.gct })), fmt: (p) => p.y + " ms" },
+    { name: "步频 spm（右轴）", color: "--endurance", type: "line", w: 2, gapDays: 15, y2: true, pts: W.filter((w) => w.cad).map((w) => ({ x: w.x, y: w.cad })), fmt: (p) => p.y + " spm" },
+  ] });
+  const pains = DATA.runs.filter((r) => r.pain).map((r) => ({ x: T(r.d), y: r.pain, run: r }));
+  chart($("#c-well"), { x, height: 200, fmt: (v) => v, y2: { min: 0, max: 10, fmt: (v) => v }, series: [
+    { name: "HRV ms", color: "--aerobic", type: "line", w: 1.4, gapDays: 3, pts: DATA.wellness.filter((w) => w.hrv).map((w) => ({ x: T(w.d), y: w.hrv })), fmt: (p) => p.y + " ms" },
+    { name: "静息心率 bpm", color: "--speed", type: "line", w: 1.4, gapDays: 3, pts: DATA.wellness.filter((w) => w.rhr).map((w) => ({ x: T(w.d), y: w.rhr })), fmt: (p) => p.y + " bpm" },
+    { name: "疼痛", color: "--warn", type: "dot", tri: true, r: 4, y2: true, tipAll: true, pts: pains, fmt: (p) => `${p.y}/10` },
+  ] });
+  chart($("#c-heat"), { x, height: 200, fmt: (v) => v + "%", yMin: 0, series: [
+    { name: "热修正", color: "--threshold", type: "dot", r: 2.6, opacity: 0.7, click: selectRun, pts: DATA.runs.filter((r) => r.heat != null && r.temp != null).map((r) => ({ x: T(r.d), y: r.heat, run: r })) },
+  ], dotTip: (p) => `<b>${p.run.d}</b> ${p.run.temp}°C｜露点 ${p.run.dew}°C｜湿度 ${p.run.rh}%<br>速度修正 +${p.run.heat}%` });
+}
+
+function renderTable() {
+  const rows = DATA.runs.filter((r) => r.km >= 3).slice(-60).reverse();
+  let h = "<tr><th>日期</th><th>类型</th><th>km</th><th>配速</th><th>HR</th><th>综合</th><th>有氧</th><th>阈值</th><th>速度</th><th>耐力</th><th>置信</th><th>气温</th></tr>";
+  rows.forEach((r) => { h += `<tr data-id="${r.id}" class="${r.id === state.sel ? "sel" : ""}"><td>${r.d.slice(5)} ${r.t}</td><td>${esc(r.label)}</td><td>${r.km}</td><td>${fmtPace(r.pace)}</td><td>${r.hr ?? "-"}</td><td><b>${f1(r.comp)}</b></td><td>${f1(r.A)}</td><td>${f1(r.T)}</td><td>${f1(r.S)}</td><td>${f1(r.E)}</td><td>${r.conf || "-"}</td><td>${r.temp ?? "-"}</td></tr>`; });
+  $("#runs").innerHTML = h;
+  $("#runs").querySelectorAll("tr[data-id]").forEach((tr) => (tr.onclick = () => selectRun({ run: runById[tr.dataset.id] })));
+}
+
+function selectRun(p) {
+  const r = p.run; if (!r) return;
+  state.sel = r.id;
+  const bar = (label, v, color) => v == null ? "" : `<div class="dimrow"><span>${label}</span><div class="dimbar"><i style="width:${Math.max(0, Math.min(100, ((v - 35) / 25) * 100))}%;background:${css(color)}"></i></div><b>${v.toFixed(1)}</b></div>`;
+  let h = `<h2>${r.d} ${r.t} · ${esc(r.label)}</h2><div class="sub">${r.km} km｜${fmtDur(r.mt)}｜${fmtPace(r.pace)}/km｜HR ${r.hr ?? "-"}｜负荷 ${r.load ?? "-"}</div>`;
+  h += `<div style="margin:10px 0 4px;font-size:26px;font-weight:600;color:${css("--accent")}">${f1(r.comp)} <span style="font-size:13px;color:${css("--muted")}">距破3 ${gapTo(r.comp)}｜置信度 ${r.conf || "-"}</span></div>`;
+  h += bar("有氧", r.A, "--aerobic") + bar("阈值", r.T, "--threshold") + bar("速度", r.S, "--speed") + bar("耐力", r.E, "--endurance");
+  h += `<div class="sub" style="margin-top:4px">条形刻度 35–60；破3 ≈ ${DATA.need}</div><table style="margin-top:10px">`;
+  h += `<tr><td>天气</td><td>${r.temp != null ? `${r.temp}°C，露点 ${r.dew}°C，湿度 ${r.rh}% → 修正 +${r.heat}%` : "无数据"}</td></tr>`;
+  h += `<tr><td>静息心率</td><td>${r.rhr ?? "-"}</td></tr><tr><td>耐力保持率</td><td>${r.ret != null ? r.ret + "%" : "-"}</td></tr>`;
+  h += `<tr><td>AeI</td><td>${fmtPace(r.aei)}/km</td></tr><tr><td>脱钩</td><td>${r.dec != null ? r.dec + "%" : "-"}</td></tr>`;
+  h += `<tr><td>跑姿</td><td>${r.cad ?? "-"} spm｜${r.gct ?? "-"} ms｜${r.step ?? "-"} m</td></tr>`;
+  if (r.pain != null) h += `<tr><td>疼痛</td><td>${r.pain}/10</td></tr>`;
+  h += "</table>";
+  if (r.segs.length) h += `<h3 style="font-size:13px;margin:12px 0 4px">速度维度快段</h3><table>${r.segs.map((s) => `<tr><td>${fmtDur(s.s)} 起</td><td>${fmtDur(s.mt)} @${fmtPace(s.pace)}，HR ${s.hr} → <b>${s.v}</b></td></tr>`).join("")}</table>`;
+  if (r.blocks.length) h += `<h3 style="font-size:13px;margin:12px 0 4px">阈值维度连续段</h3><table>${r.blocks.map((s) => `<tr><td>${fmtDur(s.s)} 起</td><td>${fmtDur(s.mt)} @${fmtPace(s.pace)}，HR ${s.hr ?? "-"} → <b>${s.v}</b></td></tr>`).join("")}</table>`;
+  h += `<p class="cap">完整分析：<a href="runs/${r.d}_${r.id}.md">runs/${r.d}_${r.id}.md</a>（运行 <code>python3 -m coach run ${r.id}</code> 生成）</p>`;
+  $("#detail").innerHTML = h;
+  renderTable(); renderCharts();
+}
+
+renderMeta(); renderKpis(); renderToggles(); renderCharts(); renderTable();
+const lastScored = [...DATA.runs].reverse().find((r) => r.comp != null);
+if (lastScored) selectRun({ run: lastScored });
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderCharts, 150); });
+</script>
+</body>
+</html>

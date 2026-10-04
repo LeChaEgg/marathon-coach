@@ -1,0 +1,5 @@
+intervals_icu_api.txt
+data/
+__pycache__/
+*.pyc
+.DS_Store

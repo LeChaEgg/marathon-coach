@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>训练中心 · 东京马拉松 2027</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f5f4f1; --surface: #fcfcfb; --sunken: #f0efec; --line: #e6e4df; --line-strong: #d3d1ca;
+  --text: #1a1a19; --text-2: #52514e; --muted: #8a887f;
+  --accent: #2a78d6; --accent-ink: #1c5cab; --accent-wash: #e9f1fc;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --neutral: #b9b7af;
+  --z1: #86b6ef; --z2: #6da7ec; --z3: #3987e5; --z4: #2a78d6; --z5: #1c5cab; --z6: #184f95; --z7: #0d366b;
+  --i1: #86b6ef; --i2: #2a78d6; --i3: #104281;
+  --good: #1a7f37; --good-wash: #e6f4ea; --warn: #9a6700; --warn-wash: #fdf3d7; --crit: #c0362c; --crit-wash: #fbe9e7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #121211; --surface: #1a1a19; --sunken: #232321; --line: #2e2e2b; --line-strong: #44443f;
+    --text: #f3f2ee; --text-2: #c3c2b7; --muted: #8a887f;
+    --accent: #3987e5; --accent-ink: #86b6ef; --accent-wash: #16263b;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --neutral: #5f5e58;
+    --z1: #184f95; --z2: #1c5cab; --z3: #2a78d6; --z4: #3987e5; --z5: #6da7ec; --z6: #9ec5f4; --z7: #cde2fb;
+    --i1: #184f95; --i2: #3987e5; --i3: #9ec5f4;
+    --good: #4cc38a; --good-wash: #12291d; --warn: #e0a93b; --warn-wash: #2e2410; --crit: #f0706a; --crit-wash: #331715;
+  }
+}
+* { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }
+body { margin: 0; background: var(--page); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent-ink); text-decoration: none; } a:hover { text-decoration: underline; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.num, td, .v { font-variant-numeric: tabular-nums; }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top .in { max-width: 1120px; margin: 0 auto; padding: 0 20px; height: 54px; display: flex; align-items: center; gap: 22px; }
+.brand { font-weight: 650; letter-spacing: .01em; white-space: nowrap; color: var(--text); }
+.brand small { color: var(--muted); font-weight: 400; margin-left: 8px; }
+nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+nav a { padding: 6px 12px; border-radius: 8px; color: var(--text-2); white-space: nowrap; }
+nav a:hover { background: var(--sunken); text-decoration: none; }
+nav a.on { background: var(--text); color: var(--page); }
+.sync { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
+
+/* primitives */
+.btn { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 8px; padding: 6px 14px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--text-2); }
+.btn.primary { background: var(--text); color: var(--page); border-color: var(--text); }
+.btn.sm { padding: 3px 10px; font-size: 12.5px; }
+.btn[disabled] { opacity: .55; cursor: progress; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.card + .card, .stack > * + * { margin-top: 14px; }
+.eyebrow { font-size: 12px; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+h2 { font-size: 16px; margin: 0 0 10px; font-weight: 600; }
+h2.sec { margin: 34px 0 12px; font-size: 13px; color: var(--muted); letter-spacing: .06em; font-weight: 500; }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.sub { color: var(--muted); font-size: 12.5px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 13px; border-radius: 99px; font-weight: 600; font-size: 14px; }
+.pill i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.pill.g { background: var(--good-wash); color: var(--good); } .pill.y { background: var(--warn-wash); color: var(--warn); } .pill.r { background: var(--crit-wash); color: var(--crit); }
+.chip { display: inline-block; padding: 1px 9px; border-radius: 99px; background: var(--sunken); color: var(--text-2); font-size: 12.5px; white-space: nowrap; }
+a.chip:hover { background: var(--accent-wash); text-decoration: none; }
+.chip.g { background: var(--good-wash); color: var(--good); } .chip.y { background: var(--warn-wash); color: var(--warn); } .chip.r { background: var(--crit-wash); color: var(--crit); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.tile .l { font-size: 12px; color: var(--muted); }
+.tile .v { font-size: 24px; font-weight: 620; line-height: 1.25; letter-spacing: -.01em; }
+.tile .v small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.tile .s { font-size: 12px; color: var(--text-2); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13.5px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* coach conclusion + markdown */
+.coach { border-color: var(--line-strong); position: relative; padding-left: 24px; }
+.coach::before { content: ""; position: absolute; left: 0; top: 18px; bottom: 18px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.empty { border-style: dashed; background: transparent; }
+.md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
+.md p { margin: 0 0 10px; }
+.coach .md > p:first-child { font-size: 16.5px; line-height: 1.6; }
+.md h3, .md h4 { font-size: 14px; margin: 16px 0 6px; }
+.md ul, .md ol { margin: 0 0 10px; padding-left: 20px; } .md li { margin: 3px 0; } .md li.sub { margin-left: 18px; list-style: circle; }
+.md code, code { font: 12.5px ui-monospace, "SF Mono", Menlo, monospace; background: var(--sunken); padding: 1px 5px; border-radius: 4px; }
+.md blockquote { margin: 0 0 10px; padding: 2px 12px; border-left: 2px solid var(--line-strong); color: var(--text-2); }
+.md s { color: var(--muted); }
+.tw { overflow-x: auto; margin: 0 0 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; white-space: nowrap; }
+th, td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+table.pick tr[data-href] { cursor: pointer; } table.pick tr[data-href]:hover td { background: var(--sunken); }
+details.sec { border-top: 1px solid var(--line); } details.sec:last-of-type { border-bottom: 1px solid var(--line); }
+details.sec > summary { cursor: pointer; padding: 11px 2px; list-style: none; display: flex; align-items: center; gap: 8px; color: var(--text-2); }
+details.sec > summary::-webkit-details-marker { display: none; }
+details.sec > summary::before { content: "›"; color: var(--muted); width: 12px; transition: transform .12s; display: inline-block; }
+details.sec[open] > summary::before { transform: rotate(90deg); }
+details.sec[open] > summary { color: var(--text); font-weight: 600; }
+details.sec > .md { padding: 4px 2px 16px 22px; font-size: 13.5px; }
+.ask { margin-top: 12px; font-size: 13.5px; color: var(--text-2); }
+.prompt { display: flex; align-items: center; gap: 8px; margin-top: 6px; background: var(--sunken); border-radius: 8px; padding: 7px 8px 7px 12px; }
+.prompt span { flex: 1; color: var(--text); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+
+/* wellness rows */
+.wrow { display: grid; grid-template-columns: 78px 54px 1fr 40px; gap: 10px; align-items: center; padding: 6px 0; font-size: 13.5px; }
+.wrow .name { color: var(--text-2); } .wrow b { font-size: 16px; font-weight: 620; }
+.track { position: relative; height: 6px; border-radius: 3px; background: var(--sunken); }
+.track::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--line-strong); }
+.track i { position: absolute; top: -3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--text-2); border: 2px solid var(--surface); }
+.track i.g { background: var(--good); } .track i.b { background: var(--warn); }
+
+/* week strip + plan list */
+.strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.dayc { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; min-height: 104px; font-size: 12.5px; display: flex; flex-direction: column; gap: 5px; }
+.dayc.today { border-color: var(--text); } .dayc.past { background: transparent; }
+.dayc .dh { display: flex; justify-content: space-between; color: var(--muted); } .dayc.today .dh { color: var(--text); font-weight: 600; }
+.dayc .pt { color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; }
+.plan-row { display: grid; grid-template-columns: 86px 1fr; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.plan-row:first-child { border-top: none; }
+.plan-row .when { color: var(--muted); font-size: 13px; } .plan-row.today .when { color: var(--text); font-weight: 650; }
+.plan-row.past .what { color: var(--text-2); }
+.plan-row .act { margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; }
+.bar { height: 8px; border-radius: 4px; background: var(--sunken); position: relative; overflow: visible; }
+.bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); }
+.bar > u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.stackbar { display: flex; gap: 2px; height: 12px; } .stackbar i { border-radius: 3px; min-width: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--text-2); margin: 6px 0; }
+.legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.legend .ln { display: inline-block; width: 14px; height: 0; border-top: 2px solid; margin-right: 5px; vertical-align: 4px; }
+.legend label { cursor: pointer; user-select: none; } .legend input { margin: 0 4px 0 0; vertical-align: -1px; }
+
+/* charts */
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.cap { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+#tip { position: fixed; pointer-events: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; display: none; z-index: 50; white-space: nowrap; font-variant-numeric: tabular-nums; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+.seg { display: inline-flex; background: var(--sunken); border-radius: 9px; padding: 2px; }
+.seg button { border: none; background: none; white-space: nowrap; padding: 4px 12px; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--text-2); }
+.seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+.dim { display: grid; grid-template-columns: 40px 1fr 92px; gap: 10px; align-items: center; padding: 5px 0; font-size: 13.5px; }
+.dim .t { position: relative; height: 8px; border-radius: 4px; background: var(--sunken); }
+.dim .t i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.dim .t u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.dim .t em { position: absolute; top: -2px; width: 2px; height: 12px; background: var(--muted); }
+
+/* forms */
+form.fb { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 12px; }
+form.fb label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+form.fb .w2 { grid-column: span 2; } form.fb .w4 { grid-column: 1 / -1; }
+input, select, textarea { background: var(--page); border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 9px; font-size: 14px; width: 100%; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input[type=checkbox] { width: auto; }
+textarea { resize: vertical; min-height: 58px; }
+.fbitem { font-size: 13.5px; padding: 8px 0; border-top: 1px solid var(--line); } .fbitem:first-child { border-top: none; padding-top: 0; }
+#toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--text); color: var(--page); padding: 9px 16px; border-radius: 10px; font-size: 13.5px; display: none; z-index: 60; max-width: 90vw; }
+.banner { background: var(--warn-wash); color: var(--warn); border-radius: 10px; padding: 9px 14px; font-size: 13.5px; margin-bottom: 16px; }
+.pager { display: flex; gap: 6px; align-items: center; }
+@media (max-width: 900px) {
+  .cols, .grid2 { grid-template-columns: 1fr; } .strip { grid-template-columns: repeat(2, 1fr); }
+  form.fb { grid-template-columns: 1fr 1fr; } .brand small, .sync span { display: none; } h1 { font-size: 24px; }
+  .top .in { gap: 10px; padding: 0 12px; } main { padding: 20px 14px 70px; }
+}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <a class="brand" href="#/today">训练中心<small id="race"></small></a>
+  <nav id="nav"></nav>
+  <div class="sync"><span id="synced"></span><button class="btn sm" data-act="sync">同步</button></div>
+</div></div>
+<main id="view"><p class="sub">加载中…</p></main>
+<div id="tip"></div><div id="toast"></div>
+<script>
+"use strict";
+let S = null;
+const $ = (s, r = document) => r.querySelector(s);
+const view = $("#view");
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const DAY = 86400000;
+const T = (d) => new Date(d + "T12:00:00").getTime();
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+const fmtPace = (s) => (s == null ? "–" : `${Math.floor(Math.round(s) / 60)}:${pad(Math.round(s) % 60)}`);
+const fmtDur = (s) => { if (s == null) return "–"; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`; };
+const fmtMin = (s) => { const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)}h${pad(m % 60)}` : `${m}′`; };
+const f1 = (v, nd = 1) => (v == null ? "–" : (+v).toFixed(nd));
+const sgn = (v, nd = 1) => (v == null ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(nd));
+const md5 = (d) => d.slice(5);
+const WD = "日一二三四五六";
+const wdOf = (d) => WD[new Date(d + "T12:00:00").getDay()];
+const DIMS = [
+  { k: "composite", r: "comp", name: "综合", color: "--s1" },
+  { k: "threshold", r: "T", name: "阈值", color: "--s2" },
+  { k: "aerobic", r: "A", name: "有氧", color: "--s3" },
+  { k: "speed", r: "S", name: "速度", color: "--s4" },
+  { k: "endurance", r: "E", name: "耐力", color: "--s5" },
+];
+const LIGHT = { "绿": ["g", "绿灯 · 可按计划执行"], "黄": ["y", "黄灯 · 需要调整"], "红": ["r", "红灯 · 停止跑步"] };
+const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem("hub." + k)) ?? d; } catch { return d; } }, set: (k, v) => localStorage.setItem("hub." + k, JSON.stringify(v)) };
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json", "X-Coach": "1" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
+let toastT;
+function toast(msg, ms = 3200) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toastT); toastT = setTimeout(() => (t.style.display = "none"), ms); }
+
+// ------------------------------------------------------------ markdown
+function inline(s) {
+  return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/~~([^~]+)~~/g, "<s>$1</s>");
+}
+function md(text) {
+  const lines = String(text || "").split("\n"), out = [];
+  const cells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+  const isNum = (c) => /^[-+−±]?[\d.,:]+\s*(%|km|bpm|s\/km|\/km|ms|m|h|σ)?$/.test(c) || c === "-";
+  let i = 0, para = [];
+  const flush = () => { if (para.length) { out.push(`<p>${para.map(inline).join("<br>")}</p>`); para = []; } };
+  while (i < lines.length) {
+    const l = lines[i];
+    if (!l.trim()) { flush(); i++; continue; }
+    let m;
+    if ((m = l.match(/^(#{1,4})\s+(.*)/))) { flush(); out.push(`<h${Math.min(4, m[1].length + 1)}>${inline(m[2])}</h${Math.min(4, m[1].length + 1)}>`); i++; continue; }
+    if (l.trim().startsWith("|") && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1] || "")) {
+      flush();
+      const head = cells(l), rows = []; i += 2;
+      while (i < lines.length && lines[i].trim().startsWith("|")) rows.push(cells(lines[i++]));
+      const numCol = head.map((_, c) => c > 0 && rows.length && rows.every((r) => isNum(r[c] ?? "-")));
+      out.push(`<div class="tw"><table><tr>${head.map((h, c) => `<th class="${numCol[c] ? "n" : ""}">${inline(h)}</th>`).join("")}</tr>${rows.map((r) => `<tr>${head.map((_, c) => `<td class="${numCol[c] ? "n" : ""}">${inline(r[c] ?? "")}</td>`).join("")}</tr>`).join("")}</table></div>`);
+      continue;
+    }
+    if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+      flush();
+      const ordered = /^\s*\d+\./.test(l), items = [];
+      while (i < lines.length && (m = lines[i].match(/^(\s*)([-*]|\d+\.)\s+(.*)/))) { items.push(`<li class="${m[1].length >= 2 ? "sub" : ""}">${inline(m[3])}</li>`); i++; }
+      out.push(`<${ordered ? "ol" : "ul"}>${items.join("")}</${ordered ? "ol" : "ul"}>`);
+      continue;
+    }
+    if (l.startsWith(">")) { flush(); out.push(`<blockquote>${inline(l.replace(/^>\s?/, ""))}</blockquote>`); i++; continue; }
+    para.push(l); i++;
+  }
+  flush();
+  return out.join("");
+}
+function reportSections(text) {
+  const body = text.split("\n## 教练结论")[0], parts = body.split(/\n(?=## )/), head = parts.shift();
+  return { meta: head.split("\n").slice(1).filter((x) => x.trim()), sections: parts.map((p) => { const nl = p.indexOf("\n"); return { title: p.slice(3, nl < 0 ? undefined : nl).replace(/^\d+\.\s*/, ""), body: nl < 0 ? "" : p.slice(nl + 1) }; }) };
+}
+async function reportDetails(kind, name) {
+  try {
+    const { text } = await api(`/api/report?kind=${kind}&name=${encodeURIComponent(name)}`), r = reportSections(text);
+    return `<h2 class="sec">完整数据</h2>${r.sections.map((s, i) => `<details class="sec" data-k="${kind}/${name}/${i}"><summary>${inline(s.title)}</summary><div class="md">${md(s.body)}</div></details>`).join("")}<p class="cap">${r.meta.map(inline).join("<br>")}</p>`;
+  } catch { return ""; }
+}
+
+// ------------------------------------------------------------ shared pieces
+const tile = (l, v, s = "", unit = "") => `<div class="tile"><div class="l">${l}</div><div class="v">${v}${unit ? `<small>${unit}</small>` : ""}</div><div class="s">${s}</div></div>`;
+const pill = (light) => { const [c, t] = LIGHT[light] || ["g", light]; return `<span class="pill ${c}"><i></i>${t}</span>`; };
+const runChip = (r) => `<a class="chip" href="#/run/${r.id}">${r.km} km ${esc(r.label)}</a>`;
+function ask(why, prompt) { return `<div class="ask">${why}<div class="prompt"><span>${esc(prompt)}</span><button class="btn sm" data-copy="${esc(prompt)}">复制</button></div></div>`; }
+function coachCard(text, title = "教练结论") { return `<section class="card coach"><div class="eyebrow">${title}</div><div class="md">${md(text)}</div></section>`; }
+function emptyCoach(title, btn, prompt, note = "") {
+  return `<section class="card empty"><h2>${title}</h2><div class="sub">${note || "数据报告由脚本生成；训练判断由教练（Claude）在对话里写入，写完后这里会自动出现。"}</div><div class="actions">${btn}</div>${ask("然后把这句话发给教练：", prompt)}</section>`;
+}
+const genBtn = (kind, label, ref = "", primary = true) => `<button class="btn ${primary ? "primary" : ""}" data-act="generate" data-kind="${kind}" data-ref="${ref}">${label}</button>`;
+function legend(items) { return `<div class="legend">${items.map((x) => `<span><i class="${x.line ? "ln" : "sw"}" style="${x.line ? `border-color:var(${x.color});${x.dash ? "border-top-style:dashed" : ""}` : `background:var(${x.color})`}"></i>${x.name}</span>`).join("")}</div>`; }
+function fbText(f) {
+  const p = [];
+  if (f.rpe != null) p.push(`RPE ${+f.rpe}`);
+  if (f.pain != null) p.push(`疼痛 ${+f.pain}/10${f.pain_loc ? "（" + esc(f.pain_loc) + "）" : ""}${f.pain_when ? " · " + esc(f.pain_when) : ""}`);
+  else if (f.pain_loc) p.push(esc(f.pain_loc));
+  if (f.gait) p.push(`步态${esc(f.gait)}`);
+  if (f.fatigue) p.push(`疲劳：${esc(f.fatigue)}`);
+  if (f.fuel) p.push(`补给：${esc(f.fuel)}`);
+  if (f.type) p.push(`类型改为 ${esc(typeName(f.type))}`);
+  return `${f.red_flag ? '<span class="chip r">红旗</span> ' : ""}${p.map((x) => `<span class="chip">${x}</span>`).join(" ")}${f.note ? `<div style="margin-top:4px">${esc(f.note)}</div>` : ""}`;
+}
+const typeName = (k) => (S.types.find((t) => t.k === k) || { name: k }).name;
+function fbList(list, withRun) {
+  if (!list.length) return "";
+  return list.map((f) => `<div class="fbitem"><div class="sub">${f.date || ""}${withRun && f.activity ? ` · <a href="#/run/${f.activity}">${f.activity}</a>` : ""}</div>${fbText(f)}</div>`).join("");
+}
+function fbForm({ activity, date, type }) {
+  const run = !!activity;
+  return `<form class="fb" data-activity="${activity || ""}" data-date="${date || ""}">
+    ${run ? `<label>RPE 1–10<input name="rpe" type="number" min="1" max="10" step="0.5" inputmode="decimal"></label>` : ""}
+    <label>疼痛 0–10<input name="pain" type="number" min="0" max="10" step="0.5" inputmode="decimal"></label>
+    <label class="${run ? "" : "w2"}">疼痛位置<input name="pain_loc" placeholder="如 左胫骨内侧；无则留空"></label>
+    <label>出现时间<select name="pain_when"><option value="">–</option><option>跑中</option><option>跑后</option><option>次日</option><option>晨起</option></select></label>
+    ${run ? `<label>步态<select name="gait"><option value="">–</option><option>正常</option><option>改变</option></select></label>
+    <label>异常疲劳<input name="fatigue" placeholder="无 / 描述"></label>
+    <label>补给<input name="fuel" placeholder="水、能量胶…"></label>
+    <label>修正跑步类型<select name="type"><option value="">不修改（${esc(typeName(type))}）</option>${S.types.map((t) => `<option value="${t.k}">${esc(t.name)}</option>`).join("")}</select></label>` : ""}
+    <label class="w4">备注<textarea name="note" placeholder="${run ? "体感、路况、与计划的出入…" : "晨起胫骨按压 / 单脚跳、睡眠、整体状态…"}"></textarea></label>
+    <label class="w2" style="flex-direction:row;align-items:center;gap:8px;color:var(--text-2);font-size:13px"><input type="checkbox" name="red_flag">红旗：骨性压痛 / 跳跃痛 / 跛行 / 疼痛持续到次日 / 全身病症</label>
+    <div class="w2" style="text-align:right"><button class="btn primary" type="submit">记录反馈</button></div>
+  </form>`;
+}
+
+// ------------------------------------------------------------ chart engine (single y axis, time or numeric x)
+function niceTicks(lo, hi, n = 4) {
+  const span = hi - lo || 1, mag = Math.pow(10, Math.floor(Math.log10(span / n)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= n) || mag * 10, out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+function timeTicks(x0, x1) {
+  const span = (x1 - x0) / DAY, out = [], d = new Date(x0); d.setHours(12, 0, 0, 0);
+  if (span <= 130) { d.setDate(d.getDate() + ((8 - d.getDay()) % 7)); for (; d.getTime() <= x1; d.setDate(d.getDate() + (span > 60 ? 14 : 7))) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
+  else { d.setDate(1); d.setMonth(d.getMonth() + 1); const st = span > 500 ? 3 : 1; for (; d.getTime() <= x1; d.setMonth(d.getMonth() + st)) out.push([d.getTime(), d.getMonth() === 0 ? `${d.getFullYear()}` : `${d.getMonth() + 1}月`]); }
+  return out;
+}
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function chart(host, o) {
+  if (!host) return;
+  host.innerHTML = "";
+  const W = host.clientWidth || 600, H = o.height || 200, P = { l: 42, r: o.padR ?? 14, t: 12, b: 24 }, U = o.unit || DAY;
+  const [x0, x1] = o.x, svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H }, host);
+  const xs = (t) => P.l + ((t - x0) / (x1 - x0)) * (W - P.l - P.r), inX = (t) => t >= x0 && t <= x1;
+  const vis = (s) => s.pts.filter((p) => inX(p.x) && p.y != null);
+  const ys = []; o.series.forEach((s) => vis(s).forEach((p) => { ys.push(p.y); if (p.y0 != null) ys.push(p.y0); })); (o.refs || []).forEach((r) => ys.push(r.y));
+  if (!ys.length) { el("text", { x: W / 2, y: H / 2, "text-anchor": "middle" }, svg).textContent = "该范围内无数据"; return; }
+  let lo = o.yMin ?? Math.min(...ys), hi = o.yMax ?? Math.max(...ys);
+  const padY = (hi - lo) * 0.1 || 1; if (o.yMin == null) lo -= padY; if (o.yMax == null) hi += padY;
+  const yv = (v) => (o.invert ? P.t + ((v - lo) / (hi - lo)) * (H - P.t - P.b) : H - P.b - ((v - lo) / (hi - lo)) * (H - P.t - P.b));
+  const grid = css("--line"), muted = css("--muted"), surf = css("--surface");
+  const paceTicks = () => { const st = [10, 15, 30, 60, 120].find((q) => (hi - lo) / q <= 4) || 300, t = []; for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) t.push(v); return t; };
+  (o.fmt === fmtPace ? paceTicks() : niceTicks(lo, hi)).forEach((v) => { const y = yv(v); el("line", { x1: P.l, x2: W - P.r, y1: y, y2: y, stroke: grid }, svg); el("text", { x: P.l - 7, y: y + 4, "text-anchor": "end" }, svg).textContent = o.fmt ? o.fmt(v) : v; });
+  (o.xt || timeTicks(x0, x1)).forEach(([t, lbl]) => { if (inX(t)) el("text", { x: xs(t), y: H - 6, "text-anchor": "middle" }, svg).textContent = lbl; });
+  (o.vlines || []).forEach((v) => { if (!inX(v.x)) return; el("line", { x1: xs(v.x), x2: xs(v.x), y1: P.t, y2: H - P.b, stroke: css("--line-strong") }, svg); el("text", { x: xs(v.x) + (v.left ? -4 : 4), y: P.t + 9, "font-size": 10, "text-anchor": v.left ? "end" : "start" }, svg).textContent = v.label; });
+  const placed = [];
+  [...(o.refs || [])].sort((a, b) => b.y - a.y).forEach((r) => { const y = yv(r.y), bump = placed.filter((q) => q.left === !!r.left && Math.abs(q.y - y) < 12).length * 96; placed.push({ y, left: !!r.left }); el("line", { x1: P.l, x2: W - P.r, y1: y, y2: y, stroke: muted, "stroke-dasharray": "4 4", opacity: r.strong ? 0.95 : 0.5 }, svg); el("text", { x: r.left ? P.l + 4 + bump : W - P.r - 2 - bump, y: y - 4, "text-anchor": r.left ? "start" : "end", "font-size": 10.5 }, svg).textContent = r.label; });
+  const slot = (W - P.l - P.r) / ((x1 - x0) / U), hits = [];
+  o.series.forEach((s) => {
+    const col = css(s.color), pts = vis(s);
+    if (s.type === "bar") {
+      const bw = Math.min(24, Math.max(2, slot * (s.span || 1) - 2));
+      pts.forEach((p) => {
+        const top = yv(p.y), base = yv(p.y0 ?? Math.max(lo, 0)) - (p.y0 ? 2 : 0), h = Math.max(0, base - top), x = xs(p.x) - bw / 2, r = s.flat ? 0 : Math.min(4, bw / 2, h);
+        if (h > 0.2) el("path", { d: `M${x},${base}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${base}Z`, fill: col, opacity: s.opacity ?? 1 }, svg);
+        hits.push({ s, p, px: xs(p.x), py: top, bar: true });
+      });
+    } else if (s.type === "line") {
+      let d = "", prev = null;
+      pts.forEach((p) => { const gap = prev && p.x - prev.x > (s.gap || 10) * U; d += (d && !gap ? "L" : "M") + xs(p.x).toFixed(1) + "," + yv(p.y).toFixed(1); prev = p; hits.push({ s, p, px: xs(p.x), py: yv(p.y), line: true }); });
+      el("path", { d, fill: "none", stroke: col, "stroke-width": s.w || 2, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": s.dash || "" }, svg);
+      if (s.markers) pts.forEach((p) => el("circle", { cx: xs(p.x), cy: yv(p.y), r: 4, fill: col, stroke: surf, "stroke-width": 2 }, svg));
+      if (s.endLabel && pts.length) { const p = pts[pts.length - 1]; el("text", { x: xs(p.x) + 6, y: yv(p.y) + 4, "font-size": 11, style: `fill:${css("--text-2")}` }, svg).textContent = s.endLabel(p); }
+    } else {
+      pts.forEach((p) => { const r = p.sel ? 6 : (s.r || 4); el("circle", { cx: xs(p.x), cy: yv(p.y), r, fill: p.hollow ? surf : col, stroke: p.hollow ? col : surf, "stroke-width": 2, opacity: s.opacity ?? 1 }, svg); hits.push({ s, p, px: xs(p.x), py: yv(p.y), dot: true }); });
+    }
+  });
+  const guide = el("line", { y1: P.t, y2: H - P.b, stroke: muted, opacity: 0, "stroke-width": 1 }, svg), tip = $("#tip");
+  const nearest = (mx, my) => { let best = null, bd = 196; hits.forEach((h) => { if (!h.dot || !h.s.click) return; const d = (h.px - mx) ** 2 + (h.py - my) ** 2; if (d < bd) { bd = d; best = h; } }); return best; };
+  const pos = (ev) => { const r = svg.getBoundingClientRect(); return [(ev.clientX - r.left) * (W / r.width), (ev.clientY - r.top) * (H / r.height)]; };
+  svg.addEventListener("mousemove", (ev) => {
+    const [mx, my] = pos(ev), hide = () => { tip.style.display = "none"; guide.setAttribute("opacity", 0); };
+    if (mx < P.l || mx > W - P.r) return hide();
+    const near = nearest(mx, my), rows = []; let xAt;
+    if (near && o.dotTip) { rows.push(o.dotTip(near.p)); xAt = near.p.x; }
+    else {
+      xAt = x0 + ((mx - P.l) / (W - P.l - P.r)) * (x1 - x0);
+      const byS = new Map();
+      hits.forEach((h) => { if (h.dot && !h.s.tip) return; const d = Math.abs(h.p.x - xAt); if (d > (o.snap || (h.bar ? 4 : h.line ? 6 : 3)) * U) return; const b = byS.get(h.s); if (!b || d < b.d) byS.set(h.s, { d, h }); });
+      if (!byS.size) return hide();
+      xAt = [...byS.values()].sort((a, b) => a.d - b.d)[0].h.p.x;
+      rows.push(`<b>${o.xFmt ? o.xFmt(xAt) : new Date(xAt).toISOString().slice(0, 10)}</b>`);
+      byS.forEach(({ h }, s) => rows.push(`<span style="color:${css(s.color)}">●</span> ${esc(s.name)}　${s.fmt ? s.fmt(h.p) : (o.fmt ? o.fmt(h.p.y) : h.p.y)}`));
+    }
+    guide.setAttribute("x1", xs(xAt)); guide.setAttribute("x2", xs(xAt)); guide.setAttribute("opacity", 0.3);
+    tip.innerHTML = rows.join("<br>"); tip.style.display = "block";
+    tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 8, ev.clientX + 14) + "px"; tip.style.top = ev.clientY + 14 + "px";
+    svg.style.cursor = near ? "pointer" : "default";
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; guide.setAttribute("opacity", 0); });
+  svg.addEventListener("click", (ev) => { const near = nearest(...pos(ev)); if (near) near.s.click(near.p); });
+}
+
+// ------------------------------------------------------------ pages
+const pages = {};
+
+pages.today = async (arg) => {
+  const isToday = !arg || arg === S.today.date, t = isToday ? S.today : await api(`/api/day?d=${arg}`);
+  const dt = new Date(t.date + "T12:00:00"), latest = S.latest;
+  const wl = t.wellness.map((w) => {
+    const z = w.z, cls = z == null ? "" : z >= 1 ? "g" : z <= -1 ? "b" : "", posn = z == null ? null : 50 + Math.max(-2.5, Math.min(2.5, z)) * 18;
+    return `<div class="wrow"><span class="name">${w.name}</span><b class="num">${w.v == null ? "–" : f1(w.v, w.nd)}</b><div class="track" title="中线 = 28 天基线 ${f1(w.base, w.nd)}；向右 = 更好">${posn == null ? "" : `<i class="${cls}" style="left:${posn}%"></i>`}</div><span class="sub">${w.v == null ? "未记录" : z == null ? "" : z >= 1 ? "偏好" : z <= -1 ? "偏差" : "正常"}</span></div>`;
+  }).join("");
+  const L = t.load, plan = t.plan;
+  const planCard = plan && (plan.text || plan.extra.length)
+    ? `<section class="card"><div class="eyebrow">今日计划 · ${esc(t.week_label)}</div><div style="font-size:16px">${inline(plan.text || "（本周计划没有今天的条目）")}</div>${plan.extra.map((x) => `<div class="sub" style="margin-top:6px">${inline(x)}</div>`).join("")}${plan.actual.length ? `<div class="actions">${t.days[6].runs.map(runChip).join("")}</div>` : ""}</section>`
+    : `<section class="card empty"><div class="eyebrow">今日计划</div>本周（${esc(t.week_label)}）还没有逐日计划。<a href="#/week">去本周页面</a></section>`;
+  const coach = t.conclusion ? coachCard(t.conclusion, "教练结论 · 今日处方")
+    : isToday ? emptyCoach("今天还没有训练建议", genBtn("today", t.report ? "重新同步并更新晨报数据" : "同步并生成晨报数据"), "早上好，今天练什么？") : "";
+  const flags = `<section class="card"><div class="eyebrow">客观信号（不含疼痛与主观感受）</div>${t.flags.length ? t.flags.map((f) => `<div style="display:flex;gap:10px;align-items:baseline;margin-top:6px"><span>${f.s >= 3 ? '<span class="chip r">红</span>' : f.s === 2 ? '<span class="chip y">黄</span>' : '<span class="chip">提示</span>'}</span><div>${esc(f.msg)}</div></div>`).join("") : "没有异常的客观信号。"}</section>`;
+  const miss = t.missing_feedback.length ? `<div class="banner">这些跑步还缺主观反馈：${t.missing_feedback.map((r) => `<a href="#/run/${r.id}">${md5(r.d)} ${r.km} km ${esc(r.label)}</a>`).join("、")}</div>` : "";
+  const lr = latest && latest.run;
+  const html = `
+  ${S.sync_error ? `<div class="banner">同步失败，当前显示的是本地缓存：${esc(S.sync_error)}</div>` : ""}
+  <div class="hero"><div><div class="eyebrow">${esc(t.week_label)}${t.phase ? " · " + esc(t.phase) : ""} · 距比赛 ${t.days_to_race} 天</div><h1>${dt.getMonth() + 1}月${dt.getDate()}日 周${t.wd}</h1></div>${pill(t.light)}</div>
+  ${miss}
+  <div class="cols">
+    <div class="stack">${planCard}${coach}${flags}
+      ${isToday ? `<details class="sec" data-k="daycheck"><summary>记录今天的身体状况（晨起胫骨按压、疼痛、疲劳）</summary><div class="md" style="padding-left:2px">${fbForm({ date: t.date })}</div></details>` : ""}
+      <div id="rep"></div>
+    </div>
+    <aside class="stack">
+      <section class="card"><div class="eyebrow">恢复 · 对比 28 天基线</div>${wl}</section>
+      <section class="card"><div class="eyebrow">跑步负荷</div>
+        <dl class="kv"><dt>近 7 天</dt><dd><b>${f1(L.km7)} km</b> / ${L.runs7} 次</dd><dt>此前 4 周周均</dt><dd>${f1(L.chronic)} km</dd><dt>比值</dt><dd>${L.acwr == null ? "–" : L.acwr.toFixed(2) + " ×"}</dd><dt>连续跑步</dt><dd>${L.streak} 天</dd><dt>CTL / ATL / TSB</dt><dd>${f1(L.ctl, 0)} / ${f1(L.atl, 0)} / ${L.tsb == null ? "–" : sgn(L.tsb, 0)}</dd></dl></section>
+      ${lr ? `<section class="card"><div class="eyebrow">最近一次跑步</div><a href="#/run/${lr.id}" style="color:inherit"><b>${md5(lr.d)} ${esc(lr.label)} · ${lr.km} km</b></a><div class="sub">${fmtPace(lr.pace)}/km · HR ${lr.hr ?? "–"} · 跑力 ${f1(lr.comp)}</div><div class="actions"><span class="chip ${latest.feedback.length ? "g" : "y"}">${latest.feedback.length ? "已反馈" : "缺反馈"}</span><span class="chip ${latest.conclusion ? "g" : ""}">${latest.conclusion ? "已分析" : "未分析"}</span></div></section>` : ""}
+    </aside>
+  </div>
+  <h2 class="sec">最近 7 天</h2>
+  <div class="strip">${t.days.map((d, i) => `<div class="dayc ${i === 6 ? "today" : "past"}"><div class="dh"><span>周${d.wd}</span><span>${md5(d.d)}</span></div>${d.runs.map(runChip).join("") || '<span class="sub">无跑步</span>'}${d.other.length ? `<div class="sub">${esc(d.other.join("、"))}</div>` : ""}<div class="sub" style="margin-top:auto">${d.sleep != null ? `睡 ${d.sleep}h` : ""}${d.hrv != null ? ` · HRV ${Math.round(d.hrv)}` : ""}${d.rhr != null ? ` · RHR ${d.rhr}` : ""}</div></div>`).join("")}</div>
+  ${t.feedback.length ? `<h2 class="sec">近 7 天主观反馈</h2><section class="card">${fbList(t.feedback.slice().reverse(), true)}</section>` : ""}
+  ${S.reports.daily.length ? `<p class="cap" style="margin-top:22px">历史晨报：${S.reports.daily.slice().reverse().slice(0, 14).map((d) => `<a href="#/today/${d}">${md5(d)}</a>`).join(" · ")}</p>` : ""}`;
+  return { html, mount: async () => { if (t.report) { const h = await reportDetails("daily", t.date + ".md"); const r = $("#rep"); if (r) { r.innerHTML = h; restoreOpen(); } } } };
+};
+
+pages.week = async (arg) => {
+  const all = S.season.weeks.map((w) => w.w), cur = S.week.label, label = arg || cur;
+  const meta = S.weeks.find((w) => w.w === label) || S.season.weeks.find((w) => w.w === label);
+  const w = label === cur ? S.week : await api(`/api/week?d=${meta ? meta.ws : S.week.ws}`);
+  const i = all.indexOf(w.label), tot = w.zones.reduce((a, b) => a + b, 0) || 1, pc = (x) => Math.round((x / tot) * 100);
+  const zl = ["低 Z1–2", "中 Z3", "高 Z4+"];
+  const rows = w.plan.days.map((d) => `<div class="plan-row ${d.today ? "today" : d.past ? "past" : ""}"><div class="when">${esc(d.label)}${d.today ? "<br>今天" : ""}</div><div class="what">${d.text ? inline(d.text) : '<span class="sub">无计划条目</span>'}${d.extra.map((x) => `<div class="sub" style="margin-top:4px">${inline(x)}</div>`).join("")}${d.runs.length ? `<div class="act">${d.runs.map((r) => `<a class="chip" href="#/run/${r.id}">✓ ${r.km} km ${esc(r.label)} · ${fmtPace(r.pace)} · HR ${r.hr ?? "–"}</a>`).join("")}</div>` : ""}</div></div>`).join("");
+  const review = w.conclusion ? coachCard(w.conclusion, "教练结论 · 周复盘")
+    : w.future ? "" : emptyCoach(w.current ? "本周复盘还没有写" : "这一周还没有复盘", genBtn("week", w.report ? "重新同步并更新周数据" : "同步并生成周复盘数据", w.ws, !w.current), `周复盘 ${w.label}，并制定下周计划`, w.current ? "一周结束（周日跑完）后再做复盘更完整。" : "");
+  const html = `
+  <div class="hero"><div><div class="eyebrow">${esc(w.phase || "赛季计划外")}${w.current ? " · 本周" : ""}</div><h1>${w.label.slice(5)} <span style="color:var(--muted);font-weight:400;font-size:20px">${md5(w.ws)} ~ ${md5(w.we)}</span></h1></div>
+    <div class="pager">${i > 0 ? `<a class="btn sm" href="#/week/${all[i - 1]}">‹ 上一周</a>` : ""}${label !== cur ? `<a class="btn sm" href="#/week">本周</a>` : ""}${i >= 0 && i < all.length - 1 ? `<a class="btn sm" href="#/week/${all[i + 1]}">下一周 ›</a>` : ""}</div></div>
+  <div class="tiles">
+    <div class="tile"><div class="l">跑量${w.plan_km ? ` / 目标 ${w.plan_km}` : ""}</div><div class="v">${f1(w.km)}<small>km</small></div>${w.plan_km ? `<div class="bar" style="margin:6px 0 4px"><i style="width:${Math.min(100, (w.km / w.plan_km) * 100)}%"></i></div>` : ""}<div class="s">上周 ${f1(w.prev_km)} · 前 4 周均 ${f1(w.avg4)}</div></div>
+    ${tile("跑步次数", w.n, w.mt ? `共 ${fmtMin(w.mt)} · 均 ${fmtPace(w.pace)}/km` : "", "次")}
+    ${tile("最长一次", f1(w.long), w.long_plan ? `计划 ${esc(w.long_plan)}` : "", "km")}
+    ${tile("质量课", w.quality.length, esc(w.quality.join("、")) || (w.key ? `计划：${esc(w.key)}` : ""), "次")}
+    <div class="tile"><div class="l">强度分布（心率区间时间）</div><div class="stackbar" style="margin:12px 0 8px">${w.zones.map((z, k) => (z ? `<i style="flex:${z};background:var(--i${k + 1})" title="${zl[k]} ${fmtMin(z)}"></i>` : "")).join("")}</div><div class="s">${w.zones.map((z, k) => `${zl[k]} ${pc(z)}%`).join(" · ")}</div></div>
+  </div>
+  <div class="cols" style="margin-top:18px">
+    <div class="stack">
+      <section class="card"><div class="eyebrow">逐日计划与实际</div>${w.plan.exists ? "" : `<div class="sub" style="margin-bottom:6px">plan/weeks/${w.label}.md 还不存在，周复盘时由教练写入。</div>`}${w.plan.head ? `<div class="sub" style="margin-bottom:4px">${inline(w.plan.head)}</div>` : ""}${rows}</section>
+      ${review}<div id="rep"></div>
+    </div>
+    <aside class="stack">
+      ${w.plan.notes.length ? `<section class="card"><div class="eyebrow">本周注意</div><div class="md" style="font-size:13.5px"><ul>${w.plan.notes.map((n) => `<li>${inline(n)}</li>`).join("")}</ul></div></section>` : ""}
+      <section class="card"><div class="eyebrow">恢复与负荷（周均）</div><dl class="kv"><dt>HRV</dt><dd>${f1(w.well.hrv, 0)}</dd><dt>静息心率</dt><dd>${f1(w.well.restingHR, 0)}</dd><dt>睡眠</dt><dd>${f1(w.well.sleepSecs)} h</dd><dt>跑步 / 其他负荷</dt><dd>${w.run_load} / ${w.other_load}</dd><dt>周末 CTL / ATL</dt><dd>${f1(w.ctl, 0)} / ${f1(w.atl, 0)}</dd></dl></section>
+      ${w.feedback.length ? `<section class="card"><div class="eyebrow">本周主观反馈</div>${fbList(w.feedback, true)}</section>` : ""}
+    </aside>
+  </div>`;
+  return { html, mount: async () => { if (w.report) { const h = await reportDetails("weekly", w.label + ".md"); const r = $("#rep"); if (r) { r.innerHTML = h; restoreOpen(); } } } };
+};
+
+pages.runs = async () => {
+  const grp = store.get("runs.grp", "all"), groups = [["all", "全部"], ["easy", "轻松"], ["long", "长距离"], ["tempo", "节奏/阈值"], ["interval", "间歇"], ["race", "比赛"]];
+  const rows = S.runs.filter((r) => r.km >= 1.5 && (grp === "all" || r.grp === grp)).slice(-80).reverse();
+  const fb = new Set(S.reports.feedback_ids), done = new Set(S.reports.concluded);
+  const html = `<div class="hero"><div><div class="eyebrow">最近 ${rows.length} 次</div><h1>跑步记录</h1></div><div class="seg" id="grp">${groups.map(([k, n]) => `<button data-g="${k}" class="${k === grp ? "on" : ""}">${n}</button>`).join("")}</div></div>
+  <section class="card"><div class="tw"><table class="pick"><tr><th>日期</th><th>类型</th><th class="n">km</th><th class="n">配速</th><th class="n">HR</th><th class="n">跑力</th><th class="n">脱钩</th><th class="n">负荷</th><th class="n">气温</th><th>状态</th></tr>
+  ${rows.map((r) => `<tr data-href="#/run/${r.id}"><td>${r.d.slice(2)} 周${wdOf(r.d)}</td><td>${esc(r.label)}</td><td class="n">${f1(r.km)}</td><td class="n">${fmtPace(r.pace)}</td><td class="n">${r.hr ?? "–"}</td><td class="n"><b>${f1(r.comp)}</b>${r.conf === "低" ? '<span class="sub"> 低</span>' : ""}</td><td class="n">${r.dec == null ? "–" : sgn(r.dec) + "%"}</td><td class="n">${r.load ?? "–"}</td><td class="n">${r.temp == null ? "–" : Math.round(r.temp) + "°"}</td><td>${r.pain >= 3 ? `<span class="chip r">疼痛 ${r.pain}</span> ` : r.pain > 0 ? `<span class="chip y">疼痛 ${r.pain}</span> ` : ""}${done.has(r.id) ? '<span class="chip g">已分析</span>' : fb.has(r.id) ? '<span class="chip">已反馈</span>' : ""}</td></tr>`).join("")}</table></div></section>
+  <p class="cap">跑力 = 单次综合评分（VDOT 刻度，破3 ≈ ${S.need}）；“低” = 低置信度，不作为判断依据。跑步机配速误差大，只作参考。</p>`;
+  return { html, mount: () => $("#grp").querySelectorAll("button").forEach((b) => (b.onclick = () => { store.set("runs.grp", b.dataset.g); render(); })) };
+};
+
+pages.run = async (id) => {
+  const v = await api(`/api/run?id=${encodeURIComponent(id || (S.latest && S.latest.run.id))}`), r = v.run, need = S.need;
+  const ztot = v.zones.reduce((a, z) => a + z.secs, 0) || 1;
+  const dims = DIMS.filter((m) => r[m.r] != null), lo = 38, hi = 58, pct = (x) => Math.max(0, Math.min(100, ((x - lo) / (hi - lo)) * 100));
+  const dimRows = dims.map((m) => `<div class="dim"><span>${m.name}</span><div class="t"><i style="width:${pct(r[m.r])}%;background:var(${m.color})"></i>${v.median28[m.r] != null ? `<em style="left:${pct(v.median28[m.r])}%" title="近 28 天中位 ${v.median28[m.r]}"></em>` : ""}<u style="left:${pct(need)}%" title="破3 ${need}"></u></div><span class="num" style="text-align:right"><b>${f1(r[m.r])}</b> <span class="sub">${sgn(r[m.r] - need)}</span></span></div>`).join("");
+  const wx = r.temp != null ? `${f1(r.temp, 0)}°C · 露点 ${f1(r.dew, 0)}° · 湿度 ${r.rh}%` : "无天气数据";
+  const coach = v.conclusion ? coachCard(v.conclusion, "教练结论 · 跑后分析")
+    : emptyCoach("这次跑步还没有教练分析", genBtn("run", v.report ? "重新同步并更新数据报告" : "同步并生成数据报告", r.id), `跑完了，分析一下 ${r.d} 的跑步（${r.id}）`, v.feedback.length ? "" : "先在下面填主观反馈，分析会更准。");
+  const html = `
+  <div class="hero"><div><div class="eyebrow"><a href="#/runs">跑步记录</a> · ${r.d} 周${wdOf(r.d)} ${r.t}${v.device ? " · " + esc(v.device) : ""}</div><h1>${esc(r.label)} ${f1(r.km, 2)} km</h1>
+    <div class="actions" style="margin-top:8px">${r.conf ? `<span class="chip ${r.conf === "低" ? "y" : ""}">评分置信度 ${r.conf}</span>` : ""}${r.tm ? '<span class="chip y">跑步机</span>' : ""}${r.era !== "apple" ? '<span class="chip">Garmin 时代</span>' : ""}${v.others.map((o) => `<a class="chip" href="#/run/${o.id}">同日 ${o.t} ${o.km} km</a>`).join("")}</div></div>
+    <div class="pager">${v.prev ? `<a class="btn sm" href="#/run/${v.prev}">‹ 上一次</a>` : ""}${v.next ? `<a class="btn sm" href="#/run/${v.next}">下一次 ›</a>` : ""}</div></div>
+  <div class="tiles">
+    ${tile("时间", fmtDur(r.mt), v.et > r.mt + 60 ? `含停顿 ${fmtDur(v.et)}` : "")}
+    ${tile("配速", fmtPace(r.pace), v.gap ? `坡度修正 ${fmtPace(v.gap)}` : "", "/km")}
+    ${tile("心率", r.hr ?? "–", `最高 ${v.hr_max ?? "–"}`, "bpm")}
+    ${tile("跑力", f1(r.comp), r.comp != null ? `距破3 ${sgn(r.comp - need)}${v.median28.comp != null ? ` · 28 天中位 ${v.median28.comp}` : ""}` : "未评分")}
+    ${tile("脱钩", r.dec == null ? "–" : sgn(r.dec), r.dec == null ? "" : r.dec < 5 ? "有氧耐力良好" : r.dec < 10 ? "一般" : "偏高（耐力或热/脱水）", "%")}
+    ${tile("负荷", r.load ?? "–", wx)}
+  </div>
+  <div class="cols" style="margin-top:18px">
+    <div class="stack">
+      ${v.plan && v.plan.text ? `<section class="card"><div class="eyebrow">当日计划</div>${inline(v.plan.text)}${v.plan.extra.map((x) => `<div class="sub" style="margin-top:4px">${inline(x)}</div>`).join("")}</section>` : ""}
+      ${coach}
+      ${v.splits.length > 1 ? `<section class="card"><h2>公里分段</h2><div class="sub">配速（越高越快）</div><div class="chart" id="c-pace"></div><div class="sub" style="margin-top:8px">心率</div><div class="chart" id="c-hr"></div>${v.split_cv != null ? `<p class="cap">分段配速变异系数 ${v.split_cv}%（稳态跑 &lt;3% 为稳定）${v.halves.length === 2 ? `；后半 vs 前半：配速 ${fmtPace(v.halves[0].pace)} → ${fmtPace(v.halves[1].pace)}，心率 ${v.halves[0].hr} → ${v.halves[1].hr}` : ""}</p>` : ""}</section>` : ""}
+      ${v.reps.length ? `<section class="card"><h2>快段 / 间歇</h2><div class="tw"><table><tr><th>#</th><th class="n">距离</th><th class="n">时间</th><th class="n">配速</th><th class="n">均 HR</th><th class="n">最高 HR</th><th class="n">60s 回落</th></tr>${v.reps.map((x, k) => `<tr><td>${k + 1}</td><td class="n">${x.dist} m</td><td class="n">${fmtDur(x.mt)}</td><td class="n"><b>${fmtPace(x.pace)}</b></td><td class="n">${x.hr ?? "–"}</td><td class="n">${x.hr_max ?? "–"}</td><td class="n">${x.hrr60 ?? "–"}</td></tr>`).join("")}</table></div>${v.strides ? `<p class="cap">另有加速跑/短冲 ${v.strides} 次</p>` : ""}</section>` : ""}
+      <section class="card"><h2>主观反馈</h2>${fbList(v.feedback)}<details class="sec" data-k="fb/${r.id}" ${v.feedback.length ? "" : "open"} style="border:none;margin-top:6px"><summary>${v.feedback.length ? "追加一条反馈" : "填写这次跑步的反馈"}</summary><div style="padding-top:8px">${fbForm({ activity: r.id, type: r.type })}</div></details></section>
+      <div id="rep"></div>
+    </div>
+    <aside class="stack">
+      ${dims.length ? `<section class="card"><div class="eyebrow">本次跑力 · VDOT 刻度</div>${dimRows}<p class="cap">粗线 = 破3（${need}）；细线 = 近 28 天中位。单次波动 ±1.5 分内属正常。</p></section>` : ""}
+      ${v.state.composite != null ? `<section class="card"><div class="eyebrow">当日状态跑力（42 天加权）</div><dl class="kv">${DIMS.filter((m) => v.state[m.k] != null).map((m) => `<dt>${m.name}</dt><dd>${m.k === "composite" ? "<b>" : ""}${f1(v.state[m.k])}${m.k === "composite" ? "</b>" : ""}${v.state[m.k + "_stale"] ? ' <span class="sub">旧</span>' : ""}</dd>`).join("")}</dl></section>` : ""}
+      ${ztot > 1 ? `<section class="card"><div class="eyebrow">心率区间</div><div class="stackbar" style="margin:8px 0 10px">${v.zones.map((z, k) => (z.secs ? `<i style="flex:${z.secs};background:var(--z${k + 1})" title="${esc(z.name)} ${fmtDur(z.secs)}"></i>` : "")).join("")}</div><dl class="kv">${v.zones.filter((z) => z.secs).map((z) => `<dt><i class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--z${v.zones.indexOf(z) + 1})"></i>${esc(z.name)}</dt><dd>${fmtDur(z.secs)} · ${Math.round((z.secs / ztot) * 100)}%</dd>`).join("")}</dl></section>` : ""}
+      <section class="card"><div class="eyebrow">跑姿与效率</div><dl class="kv"><dt>步频</dt><dd>${r.cad ?? "–"} spm</dd><dt>步幅</dt><dd>${r.step ?? "–"} m</dd><dt>触地时间</dt><dd>${r.gct ?? "–"} ms</dd><dt>EF</dt><dd>${v.ef ?? "–"}</dd><dt>AeI（HR150 等效）</dt><dd>${r.aei == null ? "–" : fmtPace(r.aei) + "/km"}</dd><dt>累计爬升</dt><dd>${v.elev ?? "–"} m</dd><dt>热修正</dt><dd>${r.heat != null ? "+" + r.heat + "%" : "–"}</dd></dl></section>
+    </aside>
+  </div>`;
+  const mount = async () => {
+    if (v.splits.length > 1) {
+      const n = v.splits.length, x = [0.4, n + 0.6], pts = v.splits.map((s, k) => ({ x: k + 1, s })), every = Math.ceil(n / 16);
+      const xt = pts.filter((p, k) => (k + 1) % every === 0 || k === 0).map((p) => [p.x, p.s.partial ? `${p.s.km}` : `${p.s.km}`]);
+      const base = { x, unit: 1, xt, snap: 0.5, height: 150, xFmt: (xv) => { const s = v.splits[Math.round(xv) - 1]; return `第 ${s.km} km${s.partial ? "（不足 1 km）" : ""}`; } };
+      chart($("#c-pace"), { ...base, invert: true, fmt: fmtPace, series: [{ name: "配速", color: "--s1", type: "line", markers: n <= 24, gap: 99, pts: pts.map((p) => ({ x: p.x, y: p.s.pace })), fmt: (p) => fmtPace(p.y) + "/km" }] });
+      const zb = S.zones.bounds;
+      chart($("#c-hr"), { ...base, fmt: (y) => Math.round(y), refs: [{ y: zb[0], label: `Z1 上限 ${zb[0]}` }, { y: zb[1], label: `Z2 上限 ${zb[1]}` }].filter((q) => Math.max(...v.splits.map((s) => s.hr || 0)) > q.y - 12), series: [{ name: "心率", color: "--s2", type: "line", markers: n <= 24, gap: 99, pts: pts.map((p) => ({ x: p.x, y: p.s.hr })), fmt: (p) => p.y + " bpm" }] });
+    }
+    if (v.report) { const h = await reportDetails("runs", v.report); const el = $("#rep"); if (el) { el.innerHTML = h; restoreOpen(); } }
+  };
+  return { html, mount };
+};
+
+pages.season = async () => {
+  const rd = S.readiness, st = S.style, wk = S.season.weeks, vol = rd.volume || {};
+  const sel = store.get("style.sel", st.level), lv = st.levels.find((l) => l.lv === sel) || st.levels[0];
+  const html = `
+  <div class="hero"><div><div class="eyebrow">${esc(S.race.name)} · ${S.race.date} · 目标 ${fmtDur(S.race.goal_s)}（${fmtPace(S.race.goal_s / 42.195)}/km）</div><h1>距比赛 ${S.race.days} 天</h1></div></div>
+  <div class="cols">
+    <div class="stack">
+      <section class="card"><div class="eyebrow">破3进度（按难度加权，模型估计，不是成功率）</div>
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px"><span class="v" style="font-size:38px;font-weight:650">${rd.progress == null ? "–" : Math.round(rd.progress) + "%"}</span><span class="sub">匀速完成所需进度线今天在 ${f1(rd.progress_expected, 0)}% · ${rd.ahead >= 0 ? "领先" : "落后"} ${f1(Math.abs(rd.ahead))} 分</span></div>
+        <div class="bar"><i style="width:${Math.max(0, Math.min(100, rd.progress || 0))}%"></i><u style="left:${Math.max(0, Math.min(100, rd.progress_expected || 0))}%" title="所需进度线"></u></div>
+        <div class="tiles" style="margin-top:16px">
+          ${tile("状态综合跑力", f1(rd.now), `破3 需要 ${rd.need}（差 ${f1(Math.abs(rd.gap))}）`)}
+          ${tile("历史峰值", f1(rd.peak), `${rd.peak_date || ""} · 之内 ${f1(rd.regain_left)} 分 / 之上 ${f1(rd.new_left)} 分`)}
+          ${tile("所需进步速度", f1(rd.req_rate, 2), `到 ${md5(rd.ready_by || "")} 还有 ${f1(rd.weeks_left, 0)} 周${rd.req_ratio ? ` · 历史最快 8 周的 ${Math.round(rd.req_ratio * 100)}%` : ""}`, "分/周")}
+          ${tile("近 8 周周均", f1(vol.k8), vol.plan_k8 ? `赛前 8 周计划 ${f1(vol.plan_k8, 0)} km` : "", "km")}
+        </div></section>
+      <section class="card"><h2>状态跑力 vs 所需进度线</h2>${legend([{ name: "状态综合跑力（周末值）", color: "--s1", line: 1 }, { name: "所需进度线", color: "--neutral", line: 1, dash: 1 }])}<div class="chart" id="c-state"></div></section>
+      <section class="card"><h2>周跑量：计划 vs 实际</h2>${legend([{ name: "实际", color: "--s1" }, { name: "计划", color: "--neutral" }])}<div class="chart" id="c-plan"></div></section>
+      <section class="card"><h2>周期表</h2><div class="tw"><table class="pick"><tr><th>周</th><th>阶段</th><th class="n">计划 km</th><th class="n">实际 km</th><th>长距离</th><th>关键课</th></tr>
+        ${wk.map((w) => `<tr data-href="#/week/${w.w}" style="${w.current ? "font-weight:600" : ""}"><td style="white-space:nowrap">${w.w.slice(5)} <span class="sub">${md5(w.ws)}</span>${w.current ? ' <span class="chip">本周</span>' : ""}</td><td style="white-space:nowrap">${esc(w.phase || "–")}</td><td class="n">${w.plan_km ?? "–"}</td><td class="n">${w.km ?? ""}</td><td>${inline(w.long_plan || "")}</td><td>${inline(w.key || "")}</td></tr>`).join("")}</table></div></section>
+    </div>
+    <aside class="stack">
+      <section class="card"><div class="eyebrow">计划激进程度</div>
+        <div class="seg" id="lv" style="display:flex">${st.levels.map((l) => `<button data-lv="${l.lv}" style="flex:1;padding:4px 0;font-size:12.5px" class="${l.lv === sel ? "on" : ""}">${l.lv} ${l.name}</button>`).join("")}</div>
+        <dl class="kv" style="margin-top:12px;grid-template-columns:1fr;gap:8px">${lv.params.map(([k, val]) => `<div><dt>${esc(k)}</dt><dd style="text-align:left">${esc(val)}</dd></div>`).join("")}</dl>
+        <p class="cap">只改变负荷规则；疼痛与红旗规则在所有档位都不变。当前：<b>${st.level} ${st.levels.find((l) => l.lv === st.level).name}</b></p>
+        ${sel !== st.level ? `<div class="actions"><button class="btn primary" data-act="style" data-lv="${sel}">改为 ${sel} ${lv.name}</button></div>${ask("改完后让教练按新档位重排计划：", `激进程度已改为 ${sel} ${lv.name}，请按新档位重新审视本周剩余计划和赛季计划`)}` : ""}
+      </section>
+      ${S.season.checkpoints.length ? `<section class="card"><div class="eyebrow">检查点</div><div class="md" style="font-size:13.5px"><ul>${S.season.checkpoints.map((c) => `<li><a href="#/week/${c.w}">${c.w.slice(5)}</a> ${esc(c.label)}</li>`).join("")}</ul></div></section>` : ""}
+      <section class="card"><div class="eyebrow">全马预测（模型，仅作方向参考）</div><dl class="kv"><dt>Daniels（状态跑力，乐观上限）</dt><dd>${fmtDur(S.now.marathon_daniels)}</dd><dt>Tanda（近 8 周跑量与配速）</dt><dd>${fmtDur(S.now.marathon_tanda)}</dd></dl></section>
+    </aside>
+  </div>`;
+  const mount = () => {
+    $("#lv").querySelectorAll("button").forEach((b) => (b.onclick = () => { store.set("style.sel", +b.dataset.lv); render(); }));
+    const x = [T(S.season.start) - 4 * DAY, T(S.race.date) + 3 * DAY], mid = (w) => T(w.ws) + 3 * DAY;
+    chart($("#c-state"), { x, height: 220, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `破3 ${S.need}`, strong: 1, left: 1 }], vlines: [{ x: T(S.race.date), label: "比赛", left: 1 }], series: [
+      { name: "所需进度线", color: "--neutral", type: "line", dash: "5 4", gap: 99, pts: wk.filter((w) => w.req != null).map((w) => ({ x: T(w.ws) + 6 * DAY, y: w.req })), fmt: (p) => f1(p.y) },
+      { name: "状态综合", color: "--s1", type: "line", markers: 1, gap: 99, pts: wk.filter((w) => w.state && w.state.composite != null).map((w) => ({ x: Math.min(T(w.ws) + 6 * DAY, T(S.today.date)), y: w.state.composite })), fmt: (p) => f1(p.y), endLabel: (p) => f1(p.y) },
+    ] });
+    chart($("#c-plan"), { x, height: 200, yMin: 0, fmt: (v) => v, unit: 7 * DAY, snap: 0.5, xFmt: (xv) => { const w = wk.find((q) => Math.abs(mid(q) - xv) < DAY); return w ? `${w.w.slice(5)}（${md5(w.ws)} 起）` : ""; }, series: [
+      { name: "计划", color: "--neutral", type: "bar", opacity: 0.55, pts: wk.filter((w) => w.plan_km != null).map((w) => ({ x: mid(w), y: w.plan_km })), fmt: (p) => p.y + " km" },
+      { name: "实际", color: "--s1", type: "bar", span: 0.5, pts: wk.filter((w) => w.km != null).map((w) => ({ x: mid(w), y: w.km })), fmt: (p) => p.y + " km" },
+    ] });
+  };
+  return { html, mount };
+};
+
+pages.ability = async () => {
+  const d = S.now.dims, range = store.get("ab.range", "12w"), show = store.get("ab.dims", { composite: true, aerobic: true, threshold: true, speed: true, endurance: false }), dots = store.get("ab.dots", false);
+  const html = `
+  <div class="hero"><div><div class="eyebrow">状态跑力 = 42 天加权、半衰期 14 天 · VDOT 刻度 · 破3 ≈ ${S.need}</div><h1>能力</h1></div>
+    <div class="seg" id="range">${[["12w", "近 12 周"], ["season", "赛季"], ["all", "全部"]].map(([k, n]) => `<button data-r="${k}" class="${k === range ? "on" : ""}">${n}</button>`).join("")}</div></div>
+  <div class="tiles">${DIMS.map((m) => { const x = d[m.k]; return `<div class="tile"><div class="l"><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;background:var(${m.color})"></i>${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距破3 ${sgn(x.v - S.need)} · 4 周 ${sgn(x.delta)}<br>${x.stale ? `<span class="chip y">证据 ${x.age} 天前</span>` : x.age != null ? `最近证据 ${x.age} 天前` : "各维度加权"}` : "无证据"}</div></div>`; }).join("")}</div>
+  <section class="card" style="margin-top:18px"><h2>跑力随时间变化</h2>
+    <div class="legend" id="toggles">${DIMS.map((m) => `<label><input type="checkbox" data-k="${m.k}" ${show[m.k] ? "checked" : ""}><i class="ln" style="border-color:var(${m.color})"></i>${m.name}</label>`).join("")}<label style="margin-left:10px"><input type="checkbox" data-k="__dots" ${dots ? "checked" : ""}>单次跑步的点</label></div>
+    <div class="chart" id="c-score"></div><p class="cap">线 = 状态跑力；点 = 单次评分（空心 = 低置信度），点击打开那次跑步。虚线是破3与 PB 对应的 VDOT。Garmin 时代（${S.apple_since} 之前）口径不同，只作参考。</p></section>
+  <div class="grid2" style="margin-top:14px">
+    <section class="card"><h2>周跑量（km）</h2><div class="chart" id="c-vol"></div></section>
+    <section class="card"><h2>强度分布（每周分钟）</h2>${legend([{ name: "低 Z1–2", color: "--i1" }, { name: "中 Z3", color: "--i2" }, { name: "高 Z4+", color: "--i3" }])}<div class="chart" id="c-int"></div></section>
+    <section class="card"><h2>有氧指数 AeI（HR150 等效配速）</h2><div class="chart" id="c-aei"></div><p class="cap">越高越快；点 = 单次轻松/长距离跑，线 = 周中位。未做天气修正，夏季偏慢。</p></section>
+    <section class="card"><h2>最长一次（km）</h2><div class="chart" id="c-long"></div></section>
+    <section class="card"><h2>轻松跑触地时间（ms）</h2><div class="chart" id="c-gct"></div></section>
+    <section class="card"><h2>轻松跑步频（spm）</h2><div class="chart" id="c-cad"></div></section>
+    <section class="card"><h2>HRV（ms）</h2><div class="chart" id="c-hrv"></div></section>
+    <section class="card"><h2>静息心率（bpm）</h2><div class="chart" id="c-rhr"></div></section>
+  </div>`;
+  const draw = () => {
+    const today = T(S.today.date);
+    const x = range === "12w" ? [today - 84 * DAY, today + 2 * DAY] : range === "season" ? [T(S.season.start), T(S.race.date) + DAY] : [T(S.daily.length ? S.daily[0].d : S.runs[0].d), today + 2 * DAY];
+    const series = [];
+    DIMS.forEach((m) => {
+      if (!show[m.k]) return;
+      series.push({ name: m.name, color: m.color, type: "line", w: m.k === "composite" ? 2.6 : 2, gap: 3, pts: S.daily.map((q) => ({ x: T(q.d), y: q[m.k] ?? null, stale: q[m.k + "_stale"] })), fmt: (p) => f1(p.y) + (p.stale ? "（旧）" : "") });
+      if (dots) series.push({ name: m.name + " 单次", color: m.color, type: "dot", r: 4, opacity: 0.8, click: (p) => (location.hash = "#/run/" + p.run.id), pts: S.runs.filter((r) => r[m.r] != null).map((r) => ({ x: T(r.d), y: r[m.r], run: r, hollow: r.conf === "低" })) });
+    });
+    chart($("#c-score"), { x, series, height: 300, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `破3 ${S.need}`, strong: 1 }].concat(S.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}`, left: 1 }))), vlines: [{ x: T(S.apple_since), label: "Apple Watch" }, { x: T(S.race.date), label: "比赛", left: 1 }],
+      dotTip: (p) => `<b>${p.run.d} ${esc(p.run.label)} ${p.run.km} km</b><br>综合 ${f1(p.run.comp)}（${p.run.conf || "–"}）· 有氧 ${f1(p.run.A)} · 阈值 ${f1(p.run.T)} · 速度 ${f1(p.run.S)} · 耐力 ${f1(p.run.E)}<br>${fmtPace(p.run.pace)}/km · HR ${p.run.hr ?? "–"}` });
+    const Wk = S.weeks.map((w) => ({ ...w, x: T(w.ws) + 3 * DAY })), wopt = { x, unit: 7 * DAY, snap: 0.5, height: 170 };
+    const line = (id, key, color, fmt, extra = {}) => chart($(id), { ...wopt, fmt: (v) => v, ...extra, series: [{ name: "周中位", color, type: "line", gap: 2.5, pts: Wk.filter((w) => w[key]).map((w) => ({ x: w.x, y: w[key] })), fmt }] });
+    chart($("#c-vol"), { ...wopt, yMin: 0, fmt: (v) => v, series: [{ name: "周跑量", color: "--s1", type: "bar", pts: Wk.map((w) => ({ x: w.x, y: w.km, w })), fmt: (p) => `${p.y} km / ${p.w.n} 次` }] });
+    chart($("#c-int"), { ...wopt, yMin: 0, fmt: (v) => v, series: [
+      { name: "低 Z1–2", color: "--i1", type: "bar", flat: 1, pts: Wk.map((w) => ({ x: w.x, y: w.low, v: w.low })), fmt: (p) => `${p.v} 分钟` },
+      { name: "中 Z3", color: "--i2", type: "bar", flat: 1, pts: Wk.map((w) => ({ x: w.x, y0: w.low, y: w.low + w.mid, v: w.mid })), fmt: (p) => `${p.v} 分钟` },
+      { name: "高 Z4+", color: "--i3", type: "bar", pts: Wk.map((w) => ({ x: w.x, y0: w.low + w.mid, y: w.low + w.mid + w.high, v: w.high })), fmt: (p) => `${p.v} 分钟` },
+    ] });
+    chart($("#c-aei"), { x, height: 170, invert: true, fmt: fmtPace, dotTip: (p) => `<b>${p.run.d} ${esc(p.run.label)}</b><br>AeI ${fmtPace(p.run.aei)}/km${p.run.temp != null ? ` · ${p.run.temp}°C` : ""}`, series: [
+      { name: "单次", color: "--s3", type: "dot", r: 4, opacity: 0.45, click: (p) => (location.hash = "#/run/" + p.run.id), pts: S.runs.filter((r) => r.aei && (r.grp === "easy" || r.grp === "long")).map((r) => ({ x: T(r.d), y: r.aei, run: r })) },
+      { name: "周中位", color: "--s3", type: "line", gap: 17, pts: Wk.filter((w) => w.aei).map((w) => ({ x: w.x, y: w.aei })), fmt: (p) => fmtPace(p.y) + "/km" },
+    ] });
+    chart($("#c-long"), { ...wopt, yMin: 0, fmt: (v) => v, series: [{ name: "最长一次", color: "--s5", type: "bar", pts: Wk.filter((w) => w.long > 0).map((w) => ({ x: w.x, y: w.long })), fmt: (p) => p.y + " km" }] });
+    line("#c-gct", "gct", "--s2", (p) => p.y + " ms"); line("#c-cad", "cad", "--s4", (p) => p.y + " spm");
+    const well = (id, key, color, unit) => chart($(id), { x, height: 170, fmt: (v) => v, series: [{ name: "每日", color, type: "line", w: 1.6, gap: 3, pts: S.wellness.filter((w) => w[key]).map((w) => ({ x: T(w.d), y: w[key] })), fmt: (p) => p.y + unit }] });
+    well("#c-hrv", "hrv", "--s3", " ms"); well("#c-rhr", "rhr", "--s2", " bpm");
+  };
+  const mount = () => {
+    $("#range").querySelectorAll("button").forEach((b) => (b.onclick = () => { store.set("ab.range", b.dataset.r); render(); }));
+    $("#toggles").querySelectorAll("input").forEach((i) => (i.onchange = () => { if (i.dataset.k === "__dots") store.set("ab.dots", i.checked); else { show[i.dataset.k] = i.checked; store.set("ab.dims", show); } render(); }));
+    draw();
+  };
+  return { html, mount };
+};
+
+// ------------------------------------------------------------ shell
+const NAV = [["today", "今日"], ["week", "本周"], ["runs", "跑步"], ["season", "赛季"], ["ability", "能力"]];
+let openKeys = new Set(), renderSeq = 0;
+function restoreOpen() { document.querySelectorAll("details[data-k]").forEach((d) => { if (openKeys.has(d.dataset.k)) d.open = true; }); }
+function parseRoute() { const [, page = "today", arg] = location.hash.split("/"); return [pages[page] ? page : "today", arg ? decodeURIComponent(arg) : undefined]; }
+async function render() {
+  const [page, arg] = parseRoute(), seq = ++renderSeq;
+  document.querySelectorAll("details[data-k]").forEach((d) => (d.open ? openKeys.add(d.dataset.k) : openKeys.delete(d.dataset.k)));
+  $("#nav").innerHTML = NAV.map(([k, n]) => `<a href="#/${k}" class="${k === page || (k === "runs" && page === "run") ? "on" : ""}">${n}</a>`).join("");
+  $("#race").textContent = `${S.race.name} · ${S.race.days} 天`;
+  $("#synced").innerHTML = `${S.weather_error ? '<span title="天气获取失败，受影响的跑步未做热修正">⚠ 天气</span> · ' : ""}同步于 ${S.synced ? S.synced.slice(5, 16).replace("T", " ") : "–"}`;
+  try {
+    const p = await pages[page](arg);
+    if (seq !== renderSeq) return;
+    view.innerHTML = p.html; restoreOpen();
+    if (p.mount) await p.mount();
+  } catch (e) { if (seq === renderSeq) view.innerHTML = `<div class="banner">加载失败：${esc(e.message)}</div>`; }
+}
+async function reload() { S = await api("/api/state"); await render(); }
+
+document.addEventListener("click", async (ev) => {
+  const copy = ev.target.closest("[data-copy]");
+  if (copy) { try { await navigator.clipboard.writeText(copy.dataset.copy); toast("已复制，粘贴到和教练的对话里"); } catch { toast("复制失败，请手动选择文字"); } return; }
+  const row = ev.target.closest("tr[data-href]");
+  if (row && !ev.target.closest("a")) { location.hash = row.dataset.href; return; }
+  const b = ev.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  const label = b.textContent; b.disabled = true;
+  try {
+    if (b.dataset.act === "sync") {
+      b.textContent = "同步中…";
+      const r = await api("/api/sync", {});
+      toast(r.ok ? "已同步 Intervals.icu 最新数据" : `同步失败，仍在使用缓存：${r.error}`, r.ok ? 3000 : 9000);
+    } else if (b.dataset.act === "generate") {
+      b.textContent = "同步并生成中…";
+      const r = await api("/api/generate", { kind: b.dataset.kind, ref: b.dataset.ref || undefined });
+      toast(r.sync_error ? `同步失败，报告用的是缓存数据：${r.sync_error}` : "数据报告已生成，可以找教练要结论了", r.sync_error ? 9000 : 3500);
+    } else if (b.dataset.act === "style") {
+      const r = await api("/api/style", { level: +b.dataset.lv });
+      toast(`激进程度已改为 ${r.level} ${r.name}`);
+    }
+    await reload();
+  } catch (e) { toast("失败：" + e.message, 8000); }
+  finally { b.disabled = false; b.textContent = label; }
+});
+document.addEventListener("submit", async (ev) => {
+  const f = ev.target.closest("form.fb"); if (!f) return;
+  ev.preventDefault();
+  const body = { activity: f.dataset.activity || undefined, date: f.dataset.date || undefined };
+  new FormData(f).forEach((v, k) => { if (v !== "") body[k] = k === "red_flag" ? true : v; });
+  const btn = f.querySelector("button[type=submit]"); btn.disabled = true;
+  try { await api("/api/feedback", body); f.reset(); document.activeElement.blur(); toast("反馈已记录"); await reload(); }
+  catch (e) { toast("没有记录：" + e.message, 6000); }
+  finally { btn.disabled = false; }
+});
+window.addEventListener("hashchange", () => { window.scrollTo(0, 0); render(); });
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 200); });
+// live refresh: when the coach writes a conclusion or new data lands, the page follows without a manual reload
+setInterval(async () => {
+  if (!S || document.hidden) return;
+  const a = document.activeElement;
+  if (a && a.closest && a.closest("form.fb")) return;
+  try { const { version } = await api("/api/version"); if (version !== S.version) await reload(); } catch {}
+}, 4000);
+reload().catch((e) => (view.innerHTML = `<div class="banner">无法加载：${esc(e.message)}</div>`));
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+# 运动员档案与分析参数。数值变化（阈值心率、体重、目标）直接改这里。
+
+[athlete]
+sex = "M"
+age = 33
+weight_kg = 58.0
+weekly_time_budget_h = [7.0, 10.5]   # 平日每天 1–1.5h，周末可更长
+other_sports = ["攀岩", "骑行通勤", "步行"]
+
+[race]
+name = "东京马拉松 2027"
+date = "2027-03-07"
+goal_s = 10799          # 2:59:59；目标是越快越好，破3为主目标
+stretch_s = 10500       # 2:55:00 冲刺参考，仅在1月测试后决定
+distance_m = 42195
+season_start = "2026-09-20"   # 中签后的第一次恢复跑；看板“赛季”视图的起点
+
+[hr]
+# 来源：2026-09-27 用户提供的 Intervals.icu 心率设置
+lthr = 173
+max = 195
+# 各区间上限 bpm：Z1..Z7
+zones = [147, 156, 163, 172, 177, 182, 195]
+zone_names = ["Z1 恢复", "Z2 有氧", "Z3 节奏", "Z4 亚阈值", "Z5 超阈值", "Z6 有氧能力", "Z7 无氧"]
+long_run_target = [145, 154]   # 长距离目标心率，平路上限 156
+aerobic_ref_hr = 150           # 有氧指数（AeI）标准化心率
+
+[pb]
+# 秒；来源 running_pb.md（半马来自旧手表，用户确认可靠）
+"5km" = 1174
+"10km" = 2387
+"半马" = 5373
+
+[injury]
+history = "接近300km/月且强度安排不合理时出现胫骨疼痛并停训，未经医学确认（疑似胫骨应力相关）。"
+watch = ["胫骨内侧/前侧", "跟腱", "足底"]
+
+[devices]
+# 2026年5–6月从 Garmin 换到 Apple Watch；此前的 HRV/静息心率/VO2max 不与之后直接比较
+apple_watch_since = "2026-06-01"
+
+[location]
+# 天气默认位置（Open-Meteo）；GPS 起点距此 >30km 时改用起点坐标
+name = "茅ヶ崎"
+lat = 35.334
+lon = 139.404
+
+# 训练计划激进程度 1–5（coach/style.py）：1 保守｜2 稳健｜3 标准｜4 积极｜5 激进
+# 只改变跑量/负荷规则；疼痛与红旗规则在所有档位都不变。可在训练中心「赛季」页调整。
+[plan]
+aggressiveness = 5
+
+# 破3准备度（coach/readiness.py）：回到自己历史峰值以内的每 1 分算 1 份代价，超过峰值的每 1 分算 above_peak_cost 份
+[readiness]
+above_peak_cost = 3.0        # 假设值：新高度的进步比恢复慢约 3 倍；无个体数据可校准
+ready_weeks_before = 2       # 能力需在赛前 2 周（减量开始）到位
+# peak = 51.5                # 默认自动取历史最高的周状态综合跑力
+
+[score]
+# 跑力评分参数，口径见 docs/methodology.md「跑力评分」
+heat_scale = 0.5               # Hadley 温度+露点修正的缩放系数；2026-09 用 117 次轻松/长距离跑校准（1.0 过度修正）
+rest_hr_fallback = 62          # wellness 与 Intervals 都没有静息心率时使用
+aerobic_hr = [120, 163]        # 有氧维度：60s 稳态片段的心率范围
+threshold_hr = [157, 177]      # 阈值维度：连续 ≥10 分钟落在此范围
+speed_hr_floor = 172           # 速度维度：快段后 60% 的平均心率下限
+weights = { aerobic = 0.4, threshold = 0.3, speed = 0.3 }   # 状态跑力的维度权重
+half_life_days = 14
+window_days = 42
+# canvas_path 已弃用：Cursor Canvas 不再生成；使用本地网页 python3 -m coach serve
+
+[sync]
+history_start = "2024-01-01"
+streams_since = "2024-01-01"
+overlap_days = 10
