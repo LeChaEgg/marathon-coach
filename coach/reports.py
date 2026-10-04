@@ -175,6 +175,29 @@ def _baseline(ctx, d, key, scale=1.0, days=28):
     return mean(vals), stdev(vals), mean(last7), len(vals)
 
 
+def resting_hr_est(ctx, d, days=28, min_n=7):
+    """(bpm, estimated) for d. Apple only finalises resting HR later in the day, so when it is missing the
+    sleeping HR of that night plus the median (resting − sleeping) gap of the previous `days` days stands in.
+    Baselines and the run score keep using measured values only."""
+    v = ctx.w(d, "restingHR")
+    if v:
+        return v, False
+    sl = ctx.w(d, "avgSleepingHR")
+    if not sl:
+        return None, False
+    gaps = []
+    for k in range(1, days + 1):
+        dd = d - dt.timedelta(days=k)
+        if str(dd) < ctx.apple_since:
+            break
+        r, s = ctx.w(dd, "restingHR"), ctx.w(dd, "avgSleepingHR")
+        if r and s:
+            gaps.append(r - s)
+    if len(gaps) < min_n:
+        return None, False
+    return round(sl + median(gaps)), True
+
+
 def readiness_flags(ctx, d):
     """Objective signals only. severity: 1 caution, 2 yellow, 3 red."""
     flags = []
@@ -189,13 +212,15 @@ def readiness_flags(ctx, d):
         flags.append((1, f"HRV 7日均值 {h7:.0f} 持续低于基线"))
     rm_, rsd, _, _ = _baseline(ctx, d, "restingHR")
     thr = max(4, 1.5 * (rsd or 0))
-    r0 = ctx.w(d, "restingHR") or ctx.w(d - dt.timedelta(days=1), "restingHR")
+    r0, r0_est = resting_hr_est(ctx, d)
+    if r0 is None:
+        r0 = ctx.w(d - dt.timedelta(days=1), "restingHR")
     r1 = ctx.w(d - dt.timedelta(days=1), "restingHR")
     r2 = ctx.w(d - dt.timedelta(days=2), "restingHR")
     if rm_ and r1 and r2 and r1 >= rm_ + thr and r2 >= rm_ + thr:
         flags.append((2, f"静息心率连续两日高于基线≥{thr:.0f}（{r2}/{r1} vs {rm_:.0f}）"))
     elif rm_ and r0 and r0 >= rm_ + thr:
-        flags.append((1, f"静息心率 {r0} 高于基线 {rm_:.0f}"))
+        flags.append((1, f"静息心率 {r0}{'（按睡眠心率估算）' if r0_est else ''} 高于基线 {rm_:.0f}"))
     sl = ctx.w(d, "sleepSecs")
     if sl is not None and sl < 6 * 3600:
         flags.append((1, f"昨晚睡眠 {fmt_hm(sl)} < 6h"))
@@ -282,10 +307,12 @@ def morning(d=None, sync_err=None):
              ("sleepScore", "睡眠评分", 1, 0, 1), ("readiness", "Readiness", 1, 0, 1), ("respiration", "呼吸频率", 1, 1, -1),
              ("weight", "体重 kg", 1, 1, 0)]
     for key, name, sc, nd, good in specs:
-        v = ctx.w(d, key)
+        v, est = resting_hr_est(ctx, d) if key == "restingHR" else (ctx.w(d, key), False)
         bm, bsd, b7, n = _baseline(ctx, d, key, sc)
         if v is None and bm is None:
             continue
+        if est:
+            name += "（估：睡眠心率+近28天差值）"
         v = v * sc if v is not None else None
         z = (v - bm) / bsd if (v is not None and bm is not None and bsd) else None
         verdict = "-"

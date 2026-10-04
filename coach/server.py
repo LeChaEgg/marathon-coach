@@ -70,9 +70,10 @@ def day_view(ctx, d):
     for k in range(6, -1, -1):
         dd = d - dt.timedelta(days=k)
         sl = ctx.w(dd, "sleepSecs")
+        rhr, rhr_est = reports.resting_hr_est(ctx, dd)
         others = [a for a in ctx.acts_on(dd) if not reports.is_run(a) and (a.get("moving_time") or 0) >= 900]
         days.append({"d": str(dd), "wd": WD[dd.weekday()], "sleep": _r(sl / 3600) if sl else None, "hrv": ctx.w(dd, "hrv"),
-                     "rhr": ctx.w(dd, "restingHR"), "ready": ctx.w(dd, "readiness"), "load": _r(ctx.load_on(dd), 0),
+                     "rhr": rhr, "rhr_est": rhr_est, "ready": ctx.w(dd, "readiness"), "load": _r(ctx.load_on(dd), 0),
                      "runs": [{"id": m["id"], "km": _r(m["dist"] / 1000), "label": label_type(m)} for m in ctx.runs(dd, dd)],
                      "other": [f"{a['type']} {round((a.get('moving_time') or 0) / 60)}′" for a in others]})
     out["days"] = days

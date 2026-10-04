@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .config import REPORTS
 from .metrics import TYPE_GROUP, aei, tanda, time_for_vdot, vdot
-from .reports import WD, Ctx, _baseline, label_type, light, readiness_flags, week_summary, zone_minutes
+from .reports import WD, Ctx, _baseline, label_type, light, readiness_flags, resting_hr_est, week_summary, zone_minutes
 from .readiness import assess, goal_vdot
 from .scoring import DIMS, rolling_state
 from .util import iso_week_label, mean, median, pace_s, parse_date, today, week_start
@@ -201,12 +201,12 @@ def _today(ctx, t):
     well = []
     for key, name, sc, nd, good in (("hrv", "HRV", 1, 0, 1), ("restingHR", "静息心率", 1, 0, -1),
                                     ("sleepSecs", "睡眠 h", 1 / 3600, 1, 1), ("readiness", "Readiness", 1, 0, 1)):
-        v = ctx.w(t, key)
+        v, est = resting_hr_est(ctx, t) if key == "restingHR" else (ctx.w(t, key), False)
         bm, bsd, _, _ = _baseline(ctx, t, key, sc)
         v = v * sc if v is not None else None
         z = (v - bm) / bsd if (v is not None and bm is not None and bsd) else None
         well.append({"name": name, "v": _r(v, nd), "base": _r(bm, nd), "z": _r(z * good if z is not None else None),
-                     "nd": nd})
+                     "nd": nd, "est": est})
     return {
         "date": str(t), "wd": WD[t.weekday()], "light": light(flags).split()[-1],
         "flags": [{"s": s, "msg": msg} for s, msg in sorted(flags, reverse=True)],

@@ -394,7 +394,7 @@ pages.today = async (arg) => {
   const dt = new Date(t.date + "T12:00:00"), latest = S.latest;
   const wl = t.wellness.map((w) => {
     const z = w.z, cls = z == null ? "" : z >= 1 ? "g" : z <= -1 ? "b" : "", posn = z == null ? null : 50 + Math.max(-2.5, Math.min(2.5, z)) * 18;
-    return `<div class="wrow"><span class="name">${w.name}</span><b class="num">${w.v == null ? "–" : f1(w.v, w.nd)}</b><div class="track" title="中线 = 28 天基线 ${f1(w.base, w.nd)}；向右 = 更好">${posn == null ? "" : `<i class="${cls}" style="left:${posn}%"></i>`}</div><span class="sub">${w.v == null ? "未记录" : z == null ? "" : z >= 1 ? "偏好" : z <= -1 ? "偏差" : "正常"}</span></div>`;
+    return `<div class="wrow"><span class="name">${w.name}</span><b class="num"${w.est ? ' title="当天静息心率还没出来：用昨晚睡眠平均心率 + 近 28 天两者差值的中位数估算"' : ""}>${w.v == null ? "–" : (w.est ? "≈" : "") + f1(w.v, w.nd)}</b><div class="track" title="中线 = 28 天基线 ${f1(w.base, w.nd)}；向右 = 更好">${posn == null ? "" : `<i class="${cls}" style="left:${posn}%"></i>`}</div><span class="sub">${w.v == null ? "未记录" : z == null ? "" : z >= 1 ? "偏好" : z <= -1 ? "偏差" : "正常"}</span></div>`;
   }).join("");
   const L = t.load, plan = t.plan;
   const planCard = plan && (plan.text || plan.extra.length)
@@ -422,7 +422,7 @@ pages.today = async (arg) => {
     </aside>
   </div>
   <h2 class="sec">最近 7 天</h2>
-  <div class="strip">${t.days.map((d, i) => `<div class="dayc ${i === 6 ? "today" : "past"}"><div class="dh"><span>周${d.wd}</span><span>${md5(d.d)}</span></div>${d.runs.map(runChip).join("") || '<span class="sub">无跑步</span>'}${d.other.length ? `<div class="sub">${esc(d.other.join("、"))}</div>` : ""}<div class="sub" style="margin-top:auto">${d.sleep != null ? `睡 ${d.sleep}h` : ""}${d.hrv != null ? ` · HRV ${Math.round(d.hrv)}` : ""}${d.rhr != null ? ` · RHR ${d.rhr}` : ""}</div></div>`).join("")}</div>
+  <div class="strip">${t.days.map((d, i) => `<div class="dayc ${i === 6 ? "today" : "past"}"><div class="dh"><span>周${d.wd}</span><span>${md5(d.d)}</span></div>${d.runs.map(runChip).join("") || '<span class="sub">无跑步</span>'}${d.other.length ? `<div class="sub">${esc(d.other.join("、"))}</div>` : ""}<div class="sub" style="margin-top:auto">${d.sleep != null ? `睡 ${d.sleep}h` : ""}${d.hrv != null ? ` · HRV ${Math.round(d.hrv)}` : ""}${d.rhr != null ? ` · RHR ${d.rhr_est ? "≈" : ""}${d.rhr}` : ""}</div></div>`).join("")}</div>
   ${t.feedback.length ? `<h2 class="sec">近 7 天主观反馈</h2><section class="card">${fbList(t.feedback.slice().reverse(), true)}</section>` : ""}
   ${S.reports.daily.length ? `<p class="cap" style="margin-top:22px">历史晨报：${S.reports.daily.slice().reverse().slice(0, 14).map((d) => `<a href="#/today/${d}">${md5(d)}</a>`).join(" · ")}</p>` : ""}`;
   return { html, mount: async () => { if (t.report) { const h = await reportDetails("daily", t.date + ".md"); const r = $("#rep"); if (r) { r.innerHTML = h; restoreOpen(); } } } };
