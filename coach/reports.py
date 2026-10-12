@@ -6,7 +6,7 @@ from .config import PLAN, REPORTS, load_config
 from .metrics import (BEST_DISTANCES, GROUP_LABEL, QUALITY_TYPES, TYPE_GROUP, TYPE_LABEL, aei, is_placeholder, is_run,
                       pooled_fit, riegel, slope_from, tanda, time_for_vdot, vdot)
 from .readiness import assess, goal_vdot
-from .scoring import DIM_LABEL, dim_value, rolling_state
+from .scoring import DIM_LABEL, REP_MAX_S, REP_MIN_S, dim_value, rolling_state
 from .style import POLICY, style
 from .util import (fmt_dur, fmt_hm, fmt_pace, fmt_speed_pace, fnum, iso_week_label, linreg, md_table, mean,
                    median, pace_s, parse_date, signed, signed_pace, spark, stdev, today, week_start)
@@ -484,6 +484,94 @@ def _row(m, slope, ref):
             fnum(m.get("load"), 0), fnum(m.get("rpe"), 0)]
 
 
+NEED_EVIDENCE = {
+    "aerobic": "稳态轻松跑 ≥20 分钟（HR 120–163，热身 8 分钟后）",
+    "threshold": "连续 ≥10 分钟 HR 157–177 且配速稳（如 2×10min、3×8min）",
+    "speed": "3–5 分钟重复、组内 HR 爬到 ≥172（如 5×1000m）",
+    "endurance": "≥60 分钟的非间歇跑",
+}
+EXPECTED_DIMS = {"easy": ("aerobic",), "long": ("aerobic", "endurance"), "tempo": ("threshold",),
+                 "interval": ("speed",), "race": ("threshold", "speed")}
+SIGNAL_BAND = 1.5  # 单次波动 ±1.5 分内属正常
+
+
+def _no_evidence_reason(k, m, ctx):
+    cfg = ctx.cfg["score"]
+    reps = m.get("reps") or []
+    if k == "speed":
+        short = [r for r in reps if (r.get("mt") or 0) < REP_MIN_S]
+        ok = [r for r in reps if REP_MIN_S <= (r.get("mt") or 0) <= REP_MAX_S]
+        if short and not ok:
+            lo, hi = min(r["mt"] for r in short), max(r["mt"] for r in short)
+            return (f"{len(short)} 个快段只有 {lo:.0f}–{hi:.0f} 秒，短于 {REP_MIN_S} 秒不计分"
+                    "（心率跟不上速度，会高估摄氧量）；算神经肌肉/速度经济性刺激")
+        if ok:
+            return f"{len(ok)} 个快段时长够，但后段心率未达 {cfg['speed_hr_floor']}，外推不可靠"
+        return "没有 2.5–12 分钟的快段"
+    if k == "threshold":
+        z3 = m.get("sustained_z3_min") or 0
+        return f"最长连续 HR≥157 只有 {z3:.0f} 分钟，不足 10 分钟" if z3 < 10 else "连续高强度段内配速波动 >8%，不算稳态阈值"
+    if k == "endurance":
+        if (m.get("mt") or 0) < 3600:
+            return f"移动 {(m.get('mt') or 0) / 60:.0f} 分钟，<60 分钟"
+        return "间歇课或前后 1/3 稳态片段不足"
+    return "稳态片段不足 5 个（热身 8 分钟、间歇及其后恢复、HR 区间外都会被剔除）"
+
+
+def contribution_section(ctx, m):
+    """Per-run verdict for each ability dimension: improved / flat / lower / not judgeable (and why)."""
+    sc = m.get("score") or {}
+    d = parse_date(m["date"])
+    prior = [x for x in ctx.runs(None, d) if x["start"] < m["start"]]
+    before = rolling_state(prior, d, ctx.cfg)
+    after = rolling_state(prior + [m], d, ctx.cfg)
+    low = sc.get("conf") == "低"
+    expected = EXPECTED_DIMS.get(m.get("type"), ())
+    rows, missing = [], []
+    for k in DIM_ORDER:
+        val = dim_value(sc, k)
+        b, a = before.get(k), after.get(k)
+        ref = f"{b['v']:.1f}" + ("（旧）" if b["stale"] else "") if b else "-"
+        if val is None:
+            if k in expected:
+                rows.append([DIM_LABEL[k], "-", ref, "-", "**无法判断**", _no_evidence_reason(k, m, ctx)])
+            else:
+                rows.append([DIM_LABEL[k], "-", ref, "-", "未涉及", _no_evidence_reason(k, m, ctx)])
+            missing.append(k)
+            continue
+        if low:
+            rows.append([DIM_LABEL[k], f"{val:.1f}", ref, "-", "**无法判断**",
+                         "置信度低（证据少/跑步机/RHR 不可靠），不计入状态跑力"])
+            missing.append(k)
+            continue
+        if not b:
+            verdict, why = "首次证据", "此前 90 天无该维度证据"
+        else:
+            diff = val - b["v"]
+            if diff >= SIGNAL_BAND:
+                verdict, why = "↑ 提升信号", f"高于此前状态 {diff:+.1f}，超出 ±{SIGNAL_BAND} 正常波动；需下次同类课再确认"
+            elif diff <= -SIGNAL_BAND:
+                verdict, why = "↓ 低于状态", f"低于此前状态 {diff:+.1f}；先查天气、睡眠、前一天负荷，再看是否连续"
+            else:
+                verdict, why = "→ 持平", f"与此前状态差 {diff:+.1f}，在 ±{SIGNAL_BAND} 内，是维持不是提升"
+        delta = a["v"] - b["v"] if a and b else None
+        rows.append([DIM_LABEL[k], f"{val:.1f}", ref, signed(delta, 2) if delta is not None else "-", f"**{verdict}**", why])
+    L = ["**本次对各能力子项的贡献**（单次值 vs 此前状态跑力；状态变化为加入本次后的变化）\n"]
+    L.append(md_table(["子项", "本次", "此前状态", "状态变化", "判断", "说明"], rows))
+    notes = []
+    for k in missing:
+        st = after.get(k)
+        age = f"，状态最近证据 {st['age']} 天前" + ("（已过期，沿用旧值）" if st["stale"] else "") if st else "，近 90 天没有证据"
+        stale = (not st) or st["stale"] or st["age"] >= 14
+        if k not in expected and not stale:
+            continue
+        notes.append(f"- {DIM_LABEL[k]}未更新{age}" + (f"；要更新需要：{NEED_EVIDENCE[k]}" if stale else ""))
+    if notes:
+        L.append("\n" + "\n".join(notes))
+    L.append("")
+    return L
+
+
 RUN_COLS = ["日期", "类型", "km", "时间", "配速", "GAP", "HR", "EF", "AeI", "跑力", "脱钩", "步频", "步幅m", "负荷", "RPE"]
 
 
@@ -538,6 +626,8 @@ def run_report(ref=None, sync_err=None):
     L.append("")
 
     L += score_section(ctx, m)
+    if m.get("score") is not None:
+        L += contribution_section(ctx, m)
 
     # zones
     z = m.get("zone_secs") or []
