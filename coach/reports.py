@@ -6,7 +6,7 @@ from .config import PLAN, REPORTS, load_config
 from .metrics import (BEST_DISTANCES, GROUP_LABEL, QUALITY_TYPES, TYPE_GROUP, TYPE_LABEL, aei, is_placeholder, is_run,
                       pooled_fit, riegel, slope_from, tanda, time_for_vdot, vdot)
 from .readiness import assess, goal_vdot
-from .scoring import DIM_LABEL, REP_MAX_S, REP_MIN_S, dim_value, rolling_state
+from .scoring import DIM_LABEL, REP_MAX_S, REP_MIN_S, THR_REP_MAX_S, THR_REP_MIN_N, THR_REP_MIN_S, dim_value, rolling_state
 from .style import POLICY, style
 from .util import (fmt_dur, fmt_hm, fmt_pace, fmt_speed_pace, fnum, iso_week_label, linreg, md_table, mean,
                    median, pace_s, parse_date, signed, signed_pace, spark, stdev, today, week_start)
@@ -426,8 +426,14 @@ def _dim_evidence(k, d, sc):
     if k == "aerobic":
         return f"{d['min']:.0f} 个 60s 稳态片段，均 HR {d['hr']:.0f}（{d['hrr'] * 100:.0f}% HRR）"
     if k == "threshold":
-        return "；".join(("比赛全程 " if b.get("race") else f"{fmt_dur(b['start_s'])} 起 ") +
-                        f"{fmt_dur(b['mt'])} @{fmt_pace(b['pace'])} HR{b['hr']:.0f}" for b in d["blocks"])
+        bl = d["blocks"]
+        reps = [b for b in bl if b.get("rep")]
+        out = [("比赛全程 " if b.get("race") else f"{fmt_dur(b['start_s'])} 起 ") +
+               f"{fmt_dur(b['mt'])} @{fmt_pace(b['pace'])} HR{b['hr']:.0f}" for b in bl if not b.get("rep")]
+        if reps:
+            out.append(f"分组 {len(reps)} 组（去掉各组前 2 分钟）共 {fmt_dur(sum(b['mt'] for b in reps))}"
+                       f"，均 @{fmt_pace(mean([b['pace'] for b in reps]))} HR{mean([b['hr'] for b in reps]):.0f}（权重 ×0.7）")
+        return "；".join(out)
     if k == "speed":
         return f"{len(d['segs'])} 个快段共 {d['min']:.0f} 分钟，后段均 HR {mean([s['hr'] for s in d['segs']]):.0f}"
     if k == "endurance":
@@ -486,7 +492,7 @@ def _row(m, slope, ref):
 
 NEED_EVIDENCE = {
     "aerobic": "稳态轻松跑 ≥20 分钟（HR 120–163，热身 8 分钟后）",
-    "threshold": "连续 ≥10 分钟 HR 157–177 且配速稳（如 2×10min、3×8min）",
+    "threshold": "连续 ≥13 分钟 HR 157–177，或 ≥3 组 4–15 分钟的重复（去掉各组前 2 分钟后 HR 157–171）",
     "speed": "3–5 分钟重复、组内 HR 爬到 ≥172（如 5×1000m）",
     "endurance": "≥60 分钟的非间歇跑",
 }
@@ -510,7 +516,13 @@ def _no_evidence_reason(k, m, ctx):
         return "没有 2.5–12 分钟的快段"
     if k == "threshold":
         z3 = m.get("sustained_z3_min") or 0
-        return f"最长连续 HR≥157 只有 {z3:.0f} 分钟，不足 10 分钟" if z3 < 10 else "连续高强度段内配速波动 >8%，不算稳态阈值"
+        nr = len([r for r in reps if THR_REP_MIN_S <= (r.get("mt") or 0) <= THR_REP_MAX_S])
+        if nr and nr < THR_REP_MIN_N:
+            return f"4–15 分钟的重复只有 {nr} 组，<{THR_REP_MIN_N} 组"
+        if nr:
+            return "各组去掉前 2 分钟后 HR 不在 157–171（偏低或已到速度强度）"
+        return (f"最长连续 HR≥157 只有 {z3:.0f} 分钟（<10），也没有 ≥{THR_REP_MIN_N} 组 4–15 分钟的重复"
+                if z3 < 10 else "连续高强度段内配速波动 >8%，不算稳态阈值")
     if k == "endurance":
         if (m.get("mt") or 0) < 3600:
             return f"移动 {(m.get('mt') or 0) / 60:.0f} 分钟，<60 分钟"

@@ -6,7 +6,7 @@ through heart-rate reserve (Swain: %HRR ≈ %VO2R):
     VO2max ≈ 3.5 + (VO2cost(v) − 3.5) / %HRR,   VO2cost = Daniels running cost (ml/kg/min)
 
 Dimensions use different parts of a run: aerobic (steady 60 s bins), threshold (≥10 min continuous
-Z3–Z4), speed (2.5–12 min reps near max HR, also checked against Daniels race formula) and endurance
+Z3–Z4, or ≥3 reps of 4–15 min), speed (2.5–12 min reps near max HR, also checked against Daniels race formula) and endurance
 (last third vs first third of ≥60 min runs). Details and limits: docs/methodology.md.
 """
 import datetime as dt
@@ -19,6 +19,10 @@ DIM_LABEL = {"aerobic": "有氧", "threshold": "阈值", "speed": "速度", "end
 MIN_HRR = 0.40
 W_CAP = 20.0  # cap per-run evidence weight in rolling state
 RECOVERY_SKIP_S = 120  # HR stays elevated after a rep; those bins would understate aerobic ability
+THR_REP_MIN_S, THR_REP_MAX_S = 240, 900  # threshold reps (4–15 min); shorter/longer are speed/continuous
+THR_REP_SKIP_S = 120  # HR lags speed: leave out the first 2 min of each rep
+THR_REP_MIN_N = 3
+THR_REP_DISCOUNT = 0.7  # rep-based threshold evidence extrapolates from less data than a continuous block
 REP_MIN_S, REP_MAX_S = 150, 720  # shorter reps: HR lags speed, estimate inflates (2:20 reps gave ~58)
 
 
@@ -132,6 +136,30 @@ def score_run(S, m, cfg, rhr, rhr_src, wx):
         v = vo2_est(_gap(sg) * f, sg["hr"], rhr, hrmax)
         if v:
             blks.append({"start_s": S.t[a], "mt": sg["mt"], "pace": 1000 / sg["speed"], "hr": sg["hr"], "v": v})
+    # threshold from repeated reps (e.g. 4×5 min, 5×1.6 km): measured after the first THR_REP_SKIP_S of each rep,
+    # only reps whose measured HR stays below the speed floor (otherwise they count as speed evidence)
+    cont = [(b["start_s"], b["start_s"] + b["mt"] + 180) for b in blks]
+    rep_blks = []
+    for r in m.get("reps") or []:
+        idx = r.get("i")
+        if not idx or not (THR_REP_MIN_S <= (r.get("mt") or 0) <= THR_REP_MAX_S):
+            continue
+        a, b = idx
+        if b >= S.n or b <= a:
+            continue
+        if any(S.t[a] < e and S.t[b] > c for c, e in cont):
+            continue
+        a2 = S.idx_at_mt(S.mt_cum[a] + THR_REP_SKIP_S)
+        if b - a2 < 30:
+            continue
+        sg = S.seg(a2, b)
+        if not sg["hr"] or not sg["speed"] or not (lo <= sg["hr"] < sc["speed_hr_floor"]):
+            continue
+        v = vo2_est(_gap(sg) * f, sg["hr"], rhr, hrmax)
+        if v:
+            rep_blks.append({"start_s": S.t[a2], "mt": sg["mt"], "pace": 1000 / sg["speed"], "hr": sg["hr"], "v": v, "rep": True})
+    if len(rep_blks) >= THR_REP_MIN_N:
+        blks += rep_blks
     if m.get("type") == "race" and m.get("dist") and m.get("et") and m["et"] >= 720:
         rv = vdot(m["dist"] * f, m["et"])
         blks.append({"start_s": 0, "mt": m["et"], "pace": m["et"] / m["dist"] * 1000, "hr": m.get("hr"), "v": rv, "race": True})
@@ -169,6 +197,9 @@ def score_run(S, m, cfg, rhr, rhr_src, wx):
 
     for d in dims.values():
         d["w"] = d["min"] * (d["hrr"] or 0) ** 2
+    thr = dims.get("threshold")
+    if thr and all(b.get("rep") for b in thr["blocks"]):
+        thr["w"] *= THR_REP_DISCOUNT
 
     # endurance (not part of composite)
     total = S.mt_cum[-1] if S.n else 0
