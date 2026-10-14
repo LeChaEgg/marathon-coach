@@ -6,7 +6,8 @@ from .config import PLAN, REPORTS, load_config
 from .metrics import (BEST_DISTANCES, GROUP_LABEL, QUALITY_TYPES, TYPE_GROUP, TYPE_LABEL, aei, is_placeholder, is_run,
                       pooled_fit, riegel, slope_from, tanda, time_for_vdot, vdot)
 from .readiness import assess, goal_vdot
-from .scoring import DIM_LABEL, REP_MAX_S, REP_MIN_S, THR_REP_MAX_S, THR_REP_MIN_N, THR_REP_MIN_S, dim_value, rolling_state
+from .scoring import (DIM_LABEL, REP_MAX_S, REP_MIN_S, THR_REP_MAX_S, THR_REP_MIN_N, THR_REP_MIN_S, change_verdict, dim_value,
+                      noise_sd, rolling_state, state_change)
 from .style import POLICY, style
 from .util import (fmt_dur, fmt_hm, fmt_pace, fmt_speed_pace, fnum, iso_week_label, linreg, md_table, mean,
                    median, pace_s, parse_date, signed, signed_pace, spark, stdev, today, week_start)
@@ -498,7 +499,6 @@ NEED_EVIDENCE = {
 }
 EXPECTED_DIMS = {"easy": ("aerobic",), "long": ("aerobic", "endurance"), "tempo": ("threshold",),
                  "interval": ("speed",), "race": ("threshold", "speed")}
-SIGNAL_BAND = 1.5  # 单次波动 ±1.5 分内属正常
 
 
 def _no_evidence_reason(k, m, ctx):
@@ -531,28 +531,31 @@ def _no_evidence_reason(k, m, ctx):
 
 
 def contribution_section(ctx, m):
-    """Per-run verdict for each ability dimension: improved / flat / lower / not judgeable (and why)."""
+    """Per-run verdict for each ability dimension, plus the week-to-date state change with its uncertainty."""
     sc = m.get("score") or {}
     d = parse_date(m["date"])
     prior = [x for x in ctx.runs(None, d) if x["start"] < m["start"]]
     before = rolling_state(prior, d, ctx.cfg)
     after = rolling_state(prior + [m], d, ctx.cfg)
+    wk0 = d - dt.timedelta(days=d.weekday() + 1)  # Sunday before this ISO week
+    week = state_change(prior + [m], wk0, d, ctx.cfg)
     low = sc.get("conf") == "低"
     expected = EXPECTED_DIMS.get(m.get("type"), ())
     rows, missing = [], []
     for k in DIM_ORDER:
         val = dim_value(sc, k)
         b, a = before.get(k), after.get(k)
+        sd = noise_sd(ctx.cfg, k)
         ref = f"{b['v']:.1f}" + ("（旧）" if b["stale"] else "") if b else "-"
+        w = week.get(k)
+        wk = f"{w['delta']:+.2f} ±{w['se']:.2f}｜{change_verdict(w['delta'], w['se'])}" if w and w["new_runs"] else "-"
         if val is None:
-            if k in expected:
-                rows.append([DIM_LABEL[k], "-", ref, "-", "**无法判断**", _no_evidence_reason(k, m, ctx)])
-            else:
-                rows.append([DIM_LABEL[k], "-", ref, "-", "未涉及", _no_evidence_reason(k, m, ctx)])
+            label = "**无法判断**" if k in expected else "未涉及"
+            rows.append([DIM_LABEL[k], "-", ref, "-", wk, label, _no_evidence_reason(k, m, ctx)])
             missing.append(k)
             continue
         if low:
-            rows.append([DIM_LABEL[k], f"{val:.1f}", ref, "-", "**无法判断**",
+            rows.append([DIM_LABEL[k], f"{val:.1f}", ref, "-", wk, "**无法判断**",
                          "置信度低（证据少/跑步机/RHR 不可靠），不计入状态跑力"])
             missing.append(k)
             continue
@@ -560,16 +563,20 @@ def contribution_section(ctx, m):
             verdict, why = "首次证据", "此前 90 天无该维度证据"
         else:
             diff = val - b["v"]
-            if diff >= SIGNAL_BAND:
-                verdict, why = "↑ 提升信号", f"高于此前状态 {diff:+.1f}，超出 ±{SIGNAL_BAND} 正常波动；需下次同类课再确认"
-            elif diff <= -SIGNAL_BAND:
-                verdict, why = "↓ 低于状态", f"低于此前状态 {diff:+.1f}；先查天气、睡眠、前一天负荷，再看是否连续"
+            z = diff / sd
+            if abs(z) < 1:
+                verdict, why = "→ 在噪声内", f"与此前状态差 {diff:+.1f}，小于该子项单次波动 ±{sd:.1f}：单次看不出提升或下降，看右侧“本周累计”"
             else:
-                verdict, why = "→ 持平", f"与此前状态差 {diff:+.1f}，在 ±{SIGNAL_BAND} 内，是维持不是提升"
+                up = z > 0
+                tag = "明显" if abs(z) >= 2 else "弱信号"
+                verdict = f"{'↑' if up else '↓'} {tag}"
+                why = f"{'高于' if up else '低于'}此前状态 {diff:+.1f}（单次波动 ±{sd:.1f}）；" + (
+                    "需下次同类课再确认" if up else "先查天气、睡眠、前一天负荷，再看是否连续")
         delta = a["v"] - b["v"] if a and b else None
-        rows.append([DIM_LABEL[k], f"{val:.1f}", ref, signed(delta, 2) if delta is not None else "-", f"**{verdict}**", why])
-    L = ["**本次对各能力子项的贡献**（单次值 vs 此前状态跑力；状态变化为加入本次后的变化）\n"]
-    L.append(md_table(["子项", "本次", "此前状态", "状态变化", "判断", "说明"], rows))
+        rows.append([DIM_LABEL[k], f"{val:.1f}", ref, signed(delta, 2) if delta is not None else "-", wk, f"**{verdict}**", why])
+    L = ["**本次对各能力子项的贡献**（单次值 vs 此前状态跑力；“本次状态变化”= 加入本次后状态动了多少；"
+         "“本周累计”= 本周一前一天 → 现在的状态变化 ± 标准误）\n"]
+    L.append(md_table(["子项", "本次", "此前状态", "本次状态变化", "本周累计", "判断", "说明"], rows))
     notes = []
     for k in missing:
         st = after.get(k)
@@ -847,7 +854,29 @@ def score_trend(ctx, weeks):
     out = [f"**跑力评分趋势（周末状态值，VDOT 刻度；破3 ≈ {need}）**\n",
            md_table(["周", "综合", "距破3", "有氧", "阈值", "速度", "耐力", "本周单次最高"], rows),
            f"\n综合 {spark(comps)}；* = 该维度42天内无新证据，沿用90天内的旧值。趋势图见训练中心「能力」页（`python3 -m coach serve`）。\n"]
-    return out + readiness_lines(ctx, weeks[-1]["we"])
+    return out + week_change_lines(ctx, weeks[-1]) + readiness_lines(ctx, weeks[-1]["we"])
+
+
+def week_change_lines(ctx, wk):
+    """本周 / 近4周的状态变化 ± 标准误：一周的真实进步常常小于噪声，看不出时如实写“看不出变化”。"""
+    all_runs = ctx.runs()
+    d0w = wk["ws"] - dt.timedelta(days=1)
+    d0m = wk["we"] - dt.timedelta(days=28)
+    w1 = state_change(all_runs, d0w, wk["we"], ctx.cfg)
+    w4 = state_change(all_runs, d0m, wk["we"], ctx.cfg)
+    rows = []
+    for k in DIM_ORDER:
+        a, b = w1.get(k), w4.get(k)
+        if not a and not b:
+            continue
+        fmt = lambda x: f"{x['delta']:+.2f} ±{x['se']:.2f}｜{change_verdict(x['delta'], x['se'])}" if x else "-"
+        rows.append([DIM_LABEL[k], f"{a['v0']:.1f} → {a['v1']:.1f}" if a else "-", fmt(a),
+                     f"{a['new_runs']}" if a else "0", fmt(b), f"±{noise_sd(ctx.cfg, k):.1f}"])
+    if not rows:
+        return []
+    return ["\n**能力变化（状态跑力，± 为标准误；|变化| < 1 个标准误 = 看不出，1–2 = 倾向，≥2 = 明确）**\n",
+            md_table(["子项", "本周初 → 周末", "本周变化", "本周新证据(次)", "近 4 周变化", "单次波动"], rows),
+            "\n单次跑力波动 ±1.5–2.5 分，周状态由多次加权，真实的周进步常 <1 分，所以多数周只能写“看不出变化”，近 4 周比单周更可信。\n"]
 
 
 def readiness_lines(ctx, d):

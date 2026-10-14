@@ -66,6 +66,7 @@ speed_hr_floor = 172           # 速度维度：快段后 60% 的平均心率下
 weights = { aerobic = 0.4, threshold = 0.3, speed = 0.3 }   # 状态跑力的维度权重
 half_life_days = 14
 window_days = 42
+noise_sd = { aerobic = 1.6, threshold = 2.5, speed = 2.2, endurance = 1.5 }   # 单次跑力相对状态的波动（VDOT 分），2026-10 用苹果时代跑步校准，样本小
 # canvas_path 已弃用：Cursor Canvas 不再生成；使用本地网页 python3 -m coach serve
 
 [sync]

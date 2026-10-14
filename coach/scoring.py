@@ -22,6 +22,9 @@ RECOVERY_SKIP_S = 120  # HR stays elevated after a rep; those bins would underst
 THR_REP_MIN_S, THR_REP_MAX_S = 240, 900  # threshold reps (4–15 min); shorter/longer are speed/continuous
 THR_REP_SKIP_S = 120  # HR lags speed: leave out the first 2 min of each rep
 THR_REP_MIN_N = 3
+# single-run scatter of each dimension around the rolling state (VDOT points), calibrated 2026-10 on Apple-era runs
+# (robust sd of run − state: aerobic ~1.4–1.8, threshold ~1.9–3.5, speed ~1.9–2.3, endurance ~0.9–2.0; small n)
+NOISE_SD = {"aerobic": 1.6, "threshold": 2.5, "speed": 2.2, "endurance": 1.5}
 THR_REP_DISCOUNT = 0.7  # rep-based threshold evidence extrapolates from less data than a continuous block
 REP_MIN_S, REP_MAX_S = 150, 720  # shorter reps: HR lags speed, estimate inflates (2:20 reps gave ~58)
 
@@ -267,6 +270,7 @@ def rolling_state(metrics, d, cfg):
         for span, stale in ((win, False), (90, True)):
             num = den = 0.0
             last, n = None, 0
+            wts_by_run = {}
             for m in runs:
                 age = (d - parse_date(m["date"])).days
                 if age > span:
@@ -279,13 +283,15 @@ def rolling_state(metrics, d, cfg):
                 else:
                     w = min(W_CAP, m["score"]["dims"][dim]["w"])
                 w *= 0.5 ** (age / hl)
+                wts_by_run[m["id"]] = w
                 num += v * w
                 den += w
                 n += 1
                 last = max(last or m["date"], m["date"])
             if den:
                 state[dim] = {"v": num / den, "n": n, "last": last, "stale": stale,
-                              "age": (d - parse_date(last)).days}
+                              "age": (d - parse_date(last)).days,
+                              "coef": {k: x / den for k, x in wts_by_run.items()}}
                 break
     wts = sc_cfg.get("weights", {"aerobic": 0.4, "threshold": 0.3, "speed": 0.3})
     have = [k for k in DIMS if k in state]
@@ -304,3 +310,40 @@ def state_series(metrics, cfg, start, end, step=7):
         out.append((str(d), rolling_state(metrics, d, cfg)))
         d += dt.timedelta(days=step)
     return out
+
+
+def noise_sd(cfg, dim):
+    return (cfg["score"].get("noise_sd") or {}).get(dim, NOISE_SD.get(dim, 2.0))
+
+
+def state_change(metrics, d0, d1, cfg):
+    """State change per dimension between two dates, with its standard error.
+
+    The state is a weighted mean of run values, so with independent single-run scatter sigma the change
+    d = Σ a_i v_i has SE = sigma * sqrt(Σ a_i²), a_i = run i's weight at d1 minus at d0. Weekly changes of
+    ~0.3–0.7 points are usually below this SE: that is the honest limit of a weekly read."""
+    d0, d1 = parse_date(d0), parse_date(d1)
+    s0 = rolling_state([m for m in metrics if parse_date(m["date"]) <= d0], d0, cfg)
+    s1 = rolling_state([m for m in metrics if parse_date(m["date"]) <= d1], d1, cfg)
+    out = {}
+    for dim in DIMS + ("endurance",):
+        a, b = s0.get(dim), s1.get(dim)
+        if not a or not b:
+            continue
+        ids = set(a["coef"]) | set(b["coef"])
+        var = sum((b["coef"].get(i, 0) - a["coef"].get(i, 0)) ** 2 for i in ids)
+        new = [i for i in b["coef"] if i not in a["coef"]]
+        out[dim] = {"v0": a["v"], "v1": b["v"], "delta": b["v"] - a["v"], "se": noise_sd(cfg, dim) * var ** 0.5,
+                    "new_runs": len(new), "stale": b["stale"]}
+    return out
+
+
+def change_verdict(delta, se):
+    """Plain-language reading of a state change against its standard error."""
+    if delta is None or not se:
+        return "-"
+    z = delta / se
+    if abs(z) < 1:
+        return "看不出变化"
+    arrow = "上升" if z > 0 else "下降"
+    return ("倾向" if abs(z) < 2 else "明确") + arrow
