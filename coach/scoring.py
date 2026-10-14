@@ -93,10 +93,24 @@ def _blocks(S, lo, hi, min_s=600, skip_s=180):
                 break
             c = S.seg(k, k2)
             if c["speed"]:
-                chunks.append(c["speed"])
+                chunks.append((k, k2, c["speed"]))
             k = k2
-        if len(chunks) >= 3 and (stdev(chunks) or 0) / mean(chunks) > 0.08:
-            continue  # rep/recovery mix, not a steady threshold block
+        sp = [c[2] for c in chunks]
+        if len(sp) >= 3 and (stdev(sp) or 0) / mean(sp) > 0.08:
+            # rep/recovery mix, or a steady block with a warm-up/cool-down still above the HR floor stuck to it:
+            # keep the longest stretch of 60 s chunks whose pace CV is <= 8 % (at least min_s - skip_s long)
+            best = None
+            for i in range(len(chunks)):
+                for j in range(i + 3, len(chunks) + 1):
+                    w = sp[i:j]
+                    if (stdev(w) or 0) / mean(w) > 0.08:
+                        break
+                    if best is None or j - i > best[1] - best[0]:
+                        best = (i, j)
+            if not best or best[1] - best[0] < (min_s - skip_s) / 60:
+                continue
+            out.append((chunks[best[0]][0], chunks[best[1] - 1][1]))
+            continue
         out.append((a2, b))
     return out
 
