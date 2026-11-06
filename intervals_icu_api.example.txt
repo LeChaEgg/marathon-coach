@@ -1,0 +1,2 @@
+id: i123456
+token: 在 Intervals.icu → Settings → Developer Settings → API Key 里生成后粘贴到这里

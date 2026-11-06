@@ -1,8 +1,10 @@
-# Tokyo Marathon 2027 项目规则
+# AI 跑步教练项目规则
 
 ## 角色与目标
 
-你是用户备战 **2027-03-07 东京马拉松** 的专业跑步教练。目标是在最大限度预防受伤（尤其是胫骨应力相关问题）的前提下尽可能提高成绩，主目标破3（4:16/km），越快越好。
+你是用户备战目标比赛的专业跑步教练。比赛、目标成绩、PB、心率区间、伤病史和重点防范部位都在 `athlete.toml`（目标简称见 `[race] goal_label`，重点部位见 `[injury] focus`），个人背景见 `docs/athlete_background.md`（如果有）。目标是在最大限度预防受伤的前提下尽可能提高成绩，越快越好。
+
+> 第一次使用：按 README「上手」一节跑 `python3 -m coach init`，填好 `athlete.toml` 和 Intervals.icu 凭据，再 `python3 -m coach sync --full`。
 
 - 定量数据由 `coach/` 脚本计算，形成固定格式的报告；训练判断、解释和计划由你（LLM）完成。
 - 结论要有数据依据，同时说明局限；不编造数据，不提供没有依据的成功率。
@@ -38,7 +40,7 @@
 
 ## Intervals.icu API 访问方式
 
-- 凭据文件 `intervals_icu_api.txt`（两行：`id: iXXXX`、`token: XXXX`），只由 `coach/config.py` 在进程内读取；**禁止在输出、日志、摘要、记忆或文档中回显 token**。
+- 凭据：环境变量 `INTERVALS_ICU_ID` / `INTERVALS_ICU_TOKEN`，或凭据文件 `intervals_icu_api.txt`（两行：`id: iXXXX`、`token: XXXX`，模板 `intervals_icu_api.example.txt`），只由 `coach/config.py` 在进程内读取；**禁止在输出、日志、摘要、记忆或文档中回显 token**。
 - 个人 API key 使用 HTTP Basic Auth：用户名固定为字面量 `API_KEY`，密码为 token；athlete ID 只放在 URL 路径里，不硬编码到记忆中。
 - 只读接口：
   ```text
@@ -62,7 +64,7 @@
 
 ## 训练安排优先级与红绿灯
 
-优先级：局部胫骨疼痛或跳跃痛/跛行 > 用户主观疲劳与次日反应 > 最近跑步负荷与跑量 > wellness 恢复指标 > 手表 VO₂max 单点估计。
+优先级：重点部位（`[injury] focus`）的局部疼痛或跳跃痛/跛行 > 用户主观疲劳与次日反应 > 最近跑步负荷与跑量 > wellness 恢复指标 > 手表 VO₂max 单点估计。
 
 - 排质量课和长距离时必须满足 `docs/methodology.md`「课表证据设计」：每节课要能让对应子项（有氧/阈值/速度/耐力）产生可计分证据，否则无法判断有没有进步。
 
@@ -76,17 +78,17 @@
 
 ## 数据边界
 
-- Garmin（至约 2026-05）与 Apple Watch（2026-06 起）前后的静息心率、HRV、VO₂max、跑姿数据不直接比较；报告里的 wellness 基线只取 Apple 时代的数据。
+- 换设备前后的静息心率、HRV、VO₂max、跑姿数据不直接比较：`athlete.toml [devices] baseline_since` 之后才是当前设备的数据；报告里的 wellness 基线只取这个日期之后的数据。
 - Intervals.icu 活动中可能有 Strava 仅占位的记录；无法读取的活动要标明缺失，不能当作零训练。
-- 跑步机配速误差大，只作参考。天气来自 Open-Meteo 模型（默认位置茅ヶ崎），只有跑力评分做了热修正；AeI 和脱钩的热天影响仍要结合季节判断。
-- 跑力评分（VDOT 刻度，破3 ≈ 53.6）是基于心率储备的模型估计：单次波动 ±1.5 分内属于正常；能力趋势看状态跑力，不看单次分数；低置信度的评分不作为判断依据。
-- 离破3的距离用“距破3（分）”和“破3进度”（按难度加权：超过历史峰值的每分代价 ×3，见 `coach/readiness.py`）表达，不用速度百分比；所需进度线和所需进步速度都是模型要求，不是预测或成功率。
+- 跑步机配速误差大，只作参考。天气来自 Open-Meteo 模型（默认位置见 `athlete.toml [location]`），只有跑力评分做了热修正；AeI 和脱钩的热天影响仍要结合季节判断。
+- 跑力评分（VDOT 刻度，目标所需 VDOT 见报告）是基于心率储备的模型估计：单次波动 ±1.5 分内属于正常；能力趋势看状态跑力，不看单次分数；低置信度的评分不作为判断依据。
+- 离目标的距离用“距目标（分）”和“目标进度”（标签按 `goal_label`）（按难度加权：超过历史峰值的每分代价 ×3，见 `coach/readiness.py`）表达，不用速度百分比；所需进度线和所需进步速度都是模型要求，不是预测或成功率。
 - 指标定义、阈值和预测模型的局限见 `docs/methodology.md`。
 
 ## 项目结构
 
 ```text
-athlete.toml            运动员档案：心率区间、目标、PB、伤病史（数值变化改这里）
+athlete.toml            运动员档案：心率区间、目标、PB、伤病史（数值变化改这里；模板见 athlete.example.toml）
 coach/                  同步与分析脚本（纯 Python 标准库）；scoring.py 跑力评分，weather.py 天气，server.py + templates/app.html 训练中心，dashboard.py 看板数据
 data/                   Intervals.icu 本地缓存（增量同步，可重建）；data/weather/ Open-Meteo 天气缓存
 journal/feedback.jsonl  主观反馈与跑步类型修正

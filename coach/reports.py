@@ -2,7 +2,8 @@
 import datetime as dt
 
 from . import store
-from .config import PLAN, REPORTS, load_config
+from .config import (PLAN, REPORTS, baseline_label, baseline_since, goal_label, injury_focus, load_config,
+                     other_sports_text)
 from .metrics import (BEST_DISTANCES, GROUP_LABEL, QUALITY_TYPES, TYPE_GROUP, TYPE_LABEL, aei, is_placeholder, is_run,
                       pooled_fit, riegel, slope_from, tanda, time_for_vdot, vdot)
 from .readiness import assess, goal_vdot
@@ -13,7 +14,32 @@ from .util import (fmt_dur, fmt_hm, fmt_pace, fmt_speed_pace, fnum, iso_week_lab
                    median, pace_s, parse_date, signed, signed_pace, spark, stdev, today, week_start)
 
 WD = "一二三四五六日"
-MP_BAND = (245, 268)  # s/km, ~4:05–4:28 for MP-specific volume
+
+
+BENCHMARK_DEFAULTS = {  # 破三（2:59:59）量级的参考标准；其他目标请在 athlete.toml [benchmarks] 里覆盖
+    "weekly_km": "基础期 60–75，专项期峰值 80–95 km（按{injury}耐受逐步到达）",
+    "long_run": "赛前 3 个月起 ≥30km；赛前10周内 3–5 次 30–35 km",
+    "mp_volume": "赛前8周累计 60–100 km，单次 16–25 km",
+    "continuity": "连续 16+ 周无伤、每周 5–6 次",
+}
+
+
+def mp_band(cfg):
+    """s/km band around goal marathon pace (≈ −4.3% … +4.7%) for counting marathon-pace-specific volume."""
+    gp = cfg["race"]["goal_s"] / 42.195
+    return round(gp * 0.957), round(gp * 1.047)
+
+
+def marathon_hr(cfg):
+    """(lo, hi) heart-rate band at goal marathon effort, from athlete.toml [hr] marathon_hr."""
+    lo, hi = (cfg.get("hr") or {}).get("marathon_hr") or (158, 163)
+    return lo, hi
+
+
+def mp_hr_points(cfg):
+    lo, hi = marathon_hr(cfg)
+    return [lo - 3, (lo + hi) // 2, hi]
+
 DIST_KM = {lbl: dist / 1000 for dist, lbl in BEST_DISTANCES}
 
 
@@ -29,7 +55,7 @@ class Ctx:
         self.state = store.state()
         self.sync_err = sync_err
         self.race = parse_date(self.cfg["race"]["date"])
-        self.apple_since = self.cfg["devices"]["apple_watch_since"]
+        self.baseline_since = baseline_since(self.cfg)
         self.zones = self.cfg["hr"]["zones"]
         self.ref_hr = self.cfg["hr"].get("aerobic_ref_hr", 150)
 
@@ -44,7 +70,7 @@ class Ctx:
 
     def fit(self, end, days=90):
         start = parse_date(end) - dt.timedelta(days=days)
-        ms = [m for m in self.runs(start, end) if m["date"] >= self.apple_since or m["era"] == "apple"]
+        ms = [m for m in self.runs(start, end) if m["date"] >= self.baseline_since]
         if len([b for m in ms for b in (m.get("bins") or [])]) < 60:
             ms = self.runs(start, end)
         return pooled_fit(ms)
@@ -166,7 +192,7 @@ def _baseline(ctx, d, key, scale=1.0, days=28):
     vals = []
     for k in range(1, days + 1):
         dd = str(d - dt.timedelta(days=k))
-        if dd < ctx.apple_since:
+        if dd < ctx.baseline_since:
             break
         v = ctx.w(dd, key)
         if v is not None:
@@ -177,7 +203,7 @@ def _baseline(ctx, d, key, scale=1.0, days=28):
 
 
 def resting_hr_est(ctx, d, days=28, min_n=7):
-    """(bpm, estimated) for d. Apple only finalises resting HR later in the day, so when it is missing the
+    """(bpm, estimated) for d. Some watches (e.g. Apple) only finalise resting HR later in the day, so when it is missing the
     sleeping HR of that night plus the median (resting − sleeping) gap of the previous `days` days stands in.
     Baselines and the run score keep using measured values only."""
     v = ctx.w(d, "restingHR")
@@ -189,7 +215,7 @@ def resting_hr_est(ctx, d, days=28, min_n=7):
     gaps = []
     for k in range(1, days + 1):
         dd = d - dt.timedelta(days=k)
-        if str(dd) < ctx.apple_since:
+        if str(dd) < ctx.baseline_since:
             break
         r, s = ctx.w(dd, "restingHR"), ctx.w(dd, "avgSleepingHR")
         if r and s:
@@ -239,7 +265,7 @@ def readiness_flags(ctx, d):
     lv, st = style(ctx.cfg)
     if ld["acwr"] and ld["acwr"] > st["acwr_yellow"]:
         flags.append((2, f"7天跑量 {ld['km7']:.1f}km 是此前4周周均 {ld['chronic']:.1f}km 的 {ld['acwr']:.1f} 倍"
-                         f"（>{st['acwr_yellow']:.2f}，激进程度 {lv}；跑量突增，胫骨风险）"))
+                         f"（>{st['acwr_yellow']:.2f}，激进程度 {lv}；跑量突增，{injury_focus(ctx.cfg)}风险）"))
     elif ld["acwr"] and ld["acwr"] > st["acwr_caution"]:
         flags.append((1, f"7天跑量/此前周均 = {ld['acwr']:.2f}"))
     if ld["streak"] >= 6:
@@ -301,7 +327,7 @@ def morning(d=None, sync_err=None):
     L.append(ctx.header_line() + "\n")
 
     # 1. wellness vs baseline
-    L.append("## 1. 今日恢复指标（Apple Watch 时代基线：前28天）\n")
+    L.append(f"## 1. 今日恢复指标（{baseline_label(ctx.cfg)} 时代基线：前28天）\n")
     rows = []
     specs = [("hrv", "HRV rMSSD", 1, 0, 1), ("hrvSDNN", "HRV SDNN", 1, 0, 1), ("restingHR", "静息心率", 1, 0, -1),
              ("avgSleepingHR", "睡眠平均心率", 1, 0, -1), ("sleepSecs", "睡眠时长 h", 1 / 3600, 1, 1),
@@ -346,7 +372,7 @@ def morning(d=None, sync_err=None):
     flags, ld = readiness_flags(ctx, d)
     ctl, atl = ctx.w(d, "ctl"), ctx.w(d, "atl")
     L.append("## 3. 训练负荷\n")
-    L.append(f"- CTL {fnum(ctl)} ｜ ATL {fnum(atl)} ｜ TSB {fnum(ctl - atl if ctl and atl else None)} ｜ ramp {fnum(ctx.w(d, 'rampRate'))}/周（全运动，含攀岩骑行）")
+    L.append(f"- CTL {fnum(ctl)} ｜ ATL {fnum(atl)} ｜ TSB {fnum(ctl - atl if ctl and atl else None)} ｜ ramp {fnum(ctx.w(d, 'rampRate'))}/周（全运动{'，含' + other_sports_text(ctx.cfg) if other_sports_text(ctx.cfg) else ''}）")
     acwr = f"{ld['acwr']:.2f}" if ld["acwr"] else "-"
     L.append(f"- 跑量：近7天 **{ld['km7']:.1f} km / {ld['runs7']} 次**；此前4周周均 {ld['chronic']:.1f} km；比值 **{acwr}**；近28天 {ld['km28']:.1f} km")
     L.append(f"- 连续跑步 {ld['streak']} 天；近7天最长 {ld['long7']:.1f} km，近28天最长 {ld['long28']:.1f} km")
@@ -393,7 +419,7 @@ def morning(d=None, sync_err=None):
         L.append("- 无异常客观信号")
     lv, st = style(ctx.cfg)
     L.append(f"\n计划激进程度 **{lv} {st['name']}**：客观黄灯时 {st['yellow_cut']}；每周质量课 ≤{st['quality']} 次。疼痛/红旗规则不随档位改变。")
-    L.append("\n> 最终判断优先级：局部胫骨疼痛/跳跃痛/跛行 > 主观疲劳与次日反应 > 最近跑量 > wellness > VO₂max。")
+    L.append(f"\n> 最终判断优先级：局部{injury_focus(ctx.cfg)}疼痛/跳跃痛/跛行 > 主观疲劳与次日反应 > 最近跑量 > wellness > VO₂max。")
     text = "\n".join(L) + "\n"
     p = save("daily", f"{d}.md", text)
     return text, p
@@ -445,13 +471,14 @@ def _dim_evidence(k, d, sc):
 def score_section(ctx, m):
     sc = m.get("score")
     need = goal_vdot(ctx.cfg["race"]["goal_s"])
-    L = [f"## 2. 本次跑力评分（VDOT 刻度；破3 ≈ {need}）\n"]
+    gl = goal_label(ctx.cfg)
+    L = [f"## 2. 本次跑力评分（VDOT 刻度；{gl} ≈ {need}）\n"]
     if not sc or sc.get("composite") is None and not sc.get("endurance"):
         L.append("- 无足够的稳态/快段数据，未评分（常见于 <3km、无心率或逐秒数据缺失）\n")
         return L
     d = parse_date(m["date"])
     comp = sc.get("composite")
-    L.append(f"**综合跑力 {fmt_score(comp)}**｜距破3 {signed(comp - need, 1) if comp else '-'}｜置信度 {sc['conf']}"
+    L.append(f"**综合跑力 {fmt_score(comp)}**｜距{gl} {signed(comp - need, 1) if comp else '-'}｜置信度 {sc['conf']}"
              + (f"｜对应全马（Daniels，乐观上限）{fmt_dur(time_for_vdot(comp, 42195))}" if comp else "") + "\n")
     prior = [x for x in ctx.runs(d - dt.timedelta(days=28), d) if x["id"] != m["id"] and x["start"] < m["start"]
              and x.get("score") and x["score"]["conf"] != "低"]
@@ -463,7 +490,7 @@ def score_section(ctx, m):
         ref = median([dim_value(x["score"], k) for x in prior])
         rows.append([DIM_LABEL[k], f"{dd['v']:.1f}", signed(dd["v"] - need, 1), _dim_evidence(k, dd, sc),
                      fnum(ref, 1), signed(dd["v"] - ref, 1) if ref else "-"])
-    L.append(md_table(["维度", "跑力", "距破3", "证据", "近28天中位", "差"], rows))
+    L.append(md_table(["维度", "跑力", f"距{gl}", "证据", "近28天中位", "差"], rows))
     segs = ((sc.get("dims") or {}).get("speed") or {}).get("segs")
     if segs:
         L.append("\n速度维度快段：\n")
@@ -477,7 +504,7 @@ def score_section(ctx, m):
         parts = [f"{DIM_LABEL[k]} {st[k]['v']:.1f}" + (f"（{st[k]['age']}天前·旧）" if st[k]["stale"] else "")
                  for k in DIM_ORDER if k in st]
         L.append(f"状态跑力（{ctx.cfg['score'].get('window_days', 42)}天加权，半衰期 {ctx.cfg['score'].get('half_life_days', 14)} 天）："
-                 f"**综合 {st['composite']['v']:.1f}**（距破3 {signed(st['composite']['v'] - need, 1)}）；" + "，".join(parts) + "\n")
+                 f"**综合 {st['composite']['v']:.1f}**（距{gl} {signed(st['composite']['v'] - need, 1)}）；" + "，".join(parts) + "\n")
     else:
         L.append("")
     return L
@@ -491,12 +518,19 @@ def _row(m, slope, ref):
             fnum(m.get("load"), 0), fnum(m.get("rpe"), 0)]
 
 
-NEED_EVIDENCE = {
-    "aerobic": "稳态轻松跑 ≥20 分钟（HR 120–163，热身 8 分钟后）",
-    "threshold": "连续 ≥13 分钟 HR 157–177，或 ≥3 组 4–15 分钟的重复（去掉各组前 2 分钟后 HR 157–171）",
-    "speed": "3–5 分钟重复、组内 HR 爬到 ≥172（如 5×1000m）",
-    "endurance": "≥60 分钟的非间歇跑",
-}
+def need_evidence(cfg):
+    sc = cfg["score"]
+    a_lo, a_hi = sc["aerobic_hr"]
+    t_lo, t_hi = sc["threshold_hr"]
+    floor = sc["speed_hr_floor"]
+    return {
+        "aerobic": f"稳态轻松跑 ≥20 分钟（HR {a_lo}–{a_hi}，热身 8 分钟后）",
+        "threshold": f"连续 ≥13 分钟 HR {t_lo}–{t_hi}，或 ≥3 组 4–15 分钟的重复（去掉各组前 2 分钟后 HR {t_lo}–{floor - 1}）",
+        "speed": f"3–5 分钟重复、组内 HR 爬到 ≥{floor}（如 5×1000m）",
+        "endurance": "≥60 分钟的非间歇跑",
+    }
+
+
 EXPECTED_DIMS = {"easy": ("aerobic",), "long": ("aerobic", "endurance"), "tempo": ("threshold",),
                  "interval": ("speed",), "race": ("threshold", "speed")}
 
@@ -520,8 +554,8 @@ def _no_evidence_reason(k, m, ctx):
         if nr and nr < THR_REP_MIN_N:
             return f"4–15 分钟的重复只有 {nr} 组，<{THR_REP_MIN_N} 组"
         if nr:
-            return "各组去掉前 2 分钟后 HR 不在 157–171（偏低或已到速度强度）"
-        return (f"最长连续 HR≥157 只有 {z3:.0f} 分钟（<10），也没有 ≥{THR_REP_MIN_N} 组 4–15 分钟的重复"
+            return f"各组去掉前 2 分钟后 HR 不在 {cfg['threshold_hr'][0]}–{cfg['speed_hr_floor'] - 1}（偏低或已到速度强度）"
+        return (f"最长连续 HR≥{cfg['threshold_hr'][0]} 只有 {z3:.0f} 分钟（<10），也没有 ≥{THR_REP_MIN_N} 组 4–15 分钟的重复"
                 if z3 < 10 else "连续高强度段内配速波动 >8%，不算稳态阈值")
     if k == "endurance":
         if (m.get("mt") or 0) < 3600:
@@ -584,7 +618,7 @@ def contribution_section(ctx, m):
         stale = (not st) or st["stale"] or st["age"] >= 14
         if k not in expected and not stale:
             continue
-        notes.append(f"- {DIM_LABEL[k]}未更新{age}" + (f"；要更新需要：{NEED_EVIDENCE[k]}" if stale else ""))
+        notes.append(f"- {DIM_LABEL[k]}未更新{age}" + (f"；要更新需要：{need_evidence(ctx.cfg)[k]}" if stale else ""))
     if notes:
         L.append("\n" + "\n".join(notes))
     L.append("")
@@ -784,7 +818,7 @@ def run_report(ref=None, sync_err=None):
     if a_now and base:
         L.append(f"**有氧状态**：本次 AeI {fmt_speed_pace(a_now)} vs 近28天全部非间歇跑中位 {fmt_speed_pace(base)}（{signed_pace(pace_s(a_now) - pace_s(base))}）\n")
     if fit:
-        mp_hr = [155, 160, 163]
+        mp_hr = mp_hr_points(ctx.cfg)
         L.append(f"近90天心率-配速曲线（n={fit['n']} 个60s片段，HR {fit['hr_min']:.0f}–{fit['hr_max']:.0f}，R²={fit['r2']:.2f}）：" +
                  "，".join(f"HR{h}→{fmt_speed_pace(fit['a'] + fit['b'] * h)}" for h in [140, 145, 150] + mp_hr) + "\n")
 
@@ -842,6 +876,7 @@ def score_trend(ctx, weeks):
     """12-week rolling state per dimension (VDOT scale), sampled at each week end."""
     all_runs = ctx.runs()
     need = goal_vdot(ctx.cfg["race"]["goal_s"])
+    gl = goal_label(ctx.cfg)
     rows, comps = [], []
     for x in weeks:
         st = rolling_state(all_runs, x["we"], ctx.cfg)
@@ -851,8 +886,8 @@ def score_trend(ctx, weeks):
         cell = lambda k: (f"{st[k]['v']:.1f}" + ("*" if st[k].get("stale") else "")) if k in st else "-"
         rows.append([iso_week_label(x["ws"])[5:], cell("composite"), signed(c["v"] - need, 1) if c else "-",
                      cell("aerobic"), cell("threshold"), cell("speed"), cell("endurance"), fnum(best, 1)])
-    out = [f"**跑力评分趋势（周末状态值，VDOT 刻度；破3 ≈ {need}）**\n",
-           md_table(["周", "综合", "距破3", "有氧", "阈值", "速度", "耐力", "本周单次最高"], rows),
+    out = [f"**跑力评分趋势（周末状态值，VDOT 刻度；{gl} ≈ {need}）**\n",
+           md_table(["周", "综合", f"距{gl}", "有氧", "阈值", "速度", "耐力", "本周单次最高"], rows),
            f"\n综合 {spark(comps)}；* = 该维度42天内无新证据，沿用90天内的旧值。趋势图见训练中心「能力」页（`python3 -m coach serve`）。\n"]
     return out + week_change_lines(ctx, weeks[-1]) + readiness_lines(ctx, weeks[-1]["we"])
 
@@ -884,10 +919,11 @@ def readiness_lines(ctx, d):
     if r.get("progress") is None:
         return []
     v = r["volume"]
-    L = [f"**破3准备度（截至 {d}，模型估计）**\n",
-         f"- 能力：状态综合 {r['now']:.1f}，距破3 {r['gap']:+.1f} 分。其中 {r['regain_left']:.1f} 分是回到自己的历史峰值 "
+    gl = goal_label(ctx.cfg)
+    L = [f"**{gl}准备度（截至 {d}，模型估计）**\n",
+         f"- 能力：状态综合 {r['now']:.1f}，距{gl} {r['gap']:+.1f} 分。其中 {r['regain_left']:.1f} 分是回到自己的历史峰值 "
          f"{r['peak']:.1f}（{r['peak_date'] or '配置值'}）以内，{r['new_left']:.1f} 分是超过峰值的新高度（按 {r['above_peak_cost']:g} 倍代价计）。",
-         f"- 难度加权进度：{r['progress']:.0f}%（赛季起点 {r['season_start']} 的状态 {r['season_base']:.1f} = 0%，破3 = 100%）；"
+         f"- 难度加权进度：{r['progress']:.0f}%（赛季起点 {r['season_start']} 的状态 {r['season_base']:.1f} = 0%，{gl} = 100%）；"
          f"匀速完成所需的进度线今天应在 {r['progress_expected']:.0f}%（{r['expected_now']:.1f}），{'领先' if r['ahead'] >= 0 else '落后'} {abs(r['ahead']):.1f} 分。",
          f"- 所需进步速度：距能力到位日 {r['ready_by']} 还有 {r['weeks_left']:.1f} 周，需要平均每周 {r['req_rate']:.2f} 分（超过峰值后折算为每周 "
          f"{r['req_rate'] / r['above_peak_cost']:.2f} 分）"
@@ -971,7 +1007,7 @@ def weekly(ws=None, sync_err=None):
             vals = [v * sc for v in vals if v is not None]
             return mean(vals)
         cur = wavg(ws, we)
-        base = wavg(max(ws - dt.timedelta(days=28), parse_date(ctx.apple_since)), ws - dt.timedelta(days=1))
+        base = wavg(max(ws - dt.timedelta(days=28), parse_date(ctx.baseline_since)), ws - dt.timedelta(days=1))
         rows.append([name, fnum(cur, nd), fnum(base, nd), signed((cur - base) if cur is not None and base is not None else None, nd)])
     short = sum(1 for k in range(7) if (ctx.w(ws + dt.timedelta(days=k), "sleepSecs") or 99999) < 6 * 3600)
     L.append(md_table(["指标", "本周", "前4周", "差"], rows))
@@ -1011,7 +1047,7 @@ def weekly(ws=None, sync_err=None):
     f_now = ctx.fit(we, 28)
     f_prev = ctx.fit(we - dt.timedelta(days=28), 28)
     rows = []
-    for h in (145, 150, 155, 160, 163):
+    for h in [145, 150] + mp_hr_points(cfg):
         now = f_now["a"] + f_now["b"] * h if f_now else None
         pv = f_prev["a"] + f_prev["b"] * h if f_prev else None
         rows.append([f"HR {h}", fmt_speed_pace(now), fmt_speed_pace(pv),
@@ -1065,7 +1101,8 @@ def weekly(ws=None, sync_err=None):
 
     # 8 predictions & gap
     goal = cfg["race"]["goal_s"]
-    L.append("## 8. 全马预测与破3差距\n")
+    gl = goal_label(cfg)
+    L.append(f"## 8. 全马预测与{gl}差距\n")
     preds = []
     if vds:
         vd, lbl, b = max(vds, key=lambda x: x[0])
@@ -1081,35 +1118,40 @@ def weekly(ws=None, sync_err=None):
     if P:
         preds.append([f"Tanda（8周周均 {K:.1f} km，平均配速 {fmt_pace(P)}）", fmt_dur(tanda(K, P)), "基于训练量与训练配速；低跑量时误差大"])
     if f_now:
-        for h in (160, 163):
+        for h in mp_hr_points(cfg)[1:]:
             sp = f_now["a"] + f_now["b"] * h
             preds.append([f"心率曲线：HR{h} 的配速 × 42.195", fmt_dur(42195 / sp), "只代表心肺；不含后程耐力衰减" + ("（外推）" if h > f_now["hr_max"] else "")])
-    for name, pb_s, dist in (("PB 半马 1:29:33", cfg["pb"].get("半马"), 21097.5), ("PB 10km", cfg["pb"].get("10km"), 10000)):
+    for lbl, dist in (("半马", 21097.5), ("10km", 10000)):
+        pb_s = (cfg.get("pb") or {}).get(lbl)
         if pb_s:
-            preds.append([f"历史 {name}（VDOT {vdot(dist, pb_s):.1f}）", fmt_dur(time_for_vdot(vdot(dist, pb_s), 42195)), "2025年春状态，非当前"])
+            preds.append([f"历史 PB {lbl} {fmt_dur(pb_s)}（VDOT {vdot(dist, pb_s):.1f}）", fmt_dur(time_for_vdot(vdot(dist, pb_s), 42195)), "历史状态，非当前"])
     L.append(md_table(["模型", "全马预测", "说明"], preds))
     need_vd = next(v / 10 for v in range(400, 800) if time_for_vdot(v / 10, 42195) <= goal)
     t_pace = 3600 / next(d_ / 1000 for d_ in range(8000, 22000, 10) if time_for_vdot(need_vd, d_) >= 3600) if need_vd else None
-    L.append(f"\n破3所需：VDOT ≈ **{need_vd:.1f}**；对应 10km ≈ {fmt_dur(time_for_vdot(need_vd, 10000))}、半马 ≈ {fmt_dur(time_for_vdot(need_vd, 21097.5))}、"
+    L.append(f"\n{gl}所需：VDOT ≈ **{need_vd:.1f}**；对应 10km ≈ {fmt_dur(time_for_vdot(need_vd, 10000))}、半马 ≈ {fmt_dur(time_for_vdot(need_vd, 21097.5))}、"
              f"阈值（60分钟比赛）配速 ≈ {fmt_pace(t_pace)}/km、马拉松配速 {fmt_pace(goal / 42.195)}/km")
     tneed = [f"{k}km/周→{fmt_pace((goal / 42.195 - 17.1 - 140 * 2.718281828 ** (-0.0053 * k)) / 0.55)}" for k in (70, 80, 90, 100)]
-    L.append(f"Tanda 模型破3需要的8周平均训练配速：" + "，".join(tneed) + "\n")
+    L.append(f"Tanda 模型{gl}需要的8周平均训练配速：" + "，".join(tneed) + "\n")
 
     mp_km = sum(1 for m in r28 if m["type"] != "race" for s in (m.get("splits") or [])
-                if not s.get("partial") and s.get("speed") and MP_BAND[0] <= pace_s(s["speed"]) <= MP_BAND[1])
+                if not s.get("partial") and s.get("speed") and mp_band(cfg)[0] <= pace_s(s["speed"]) <= mp_band(cfg)[1])
     longest_12w = max([m["dist"] for m in ctx.runs(we - dt.timedelta(days=83), we)], default=0) / 1000
     fb_pain = [f for f in ctx.fb if (f.get("pain") or 0) >= 3]
     last_pain = max((f["date"] for f in fb_pain), default=None)
+    bm = {**BENCHMARK_DEFAULTS, **(cfg.get("benchmarks") or {})}
+    mp_lo, mp_hi = mp_band(cfg)
+    m_lo, m_hi = marathon_hr(cfg)
+    m_mid = mp_hr_points(cfg)[1]
     rows = [
-        ["周跑量", f"本周 {W['km']:.0f}｜8周均 {K:.0f} km", "基础期 60–75，专项期峰值 80–95 km（按胫骨耐受逐步到达）"],
-        ["长距离", f"近12周最长 {longest_12w:.1f} km", "12月起 ≥30km；赛前10周内 3–5 次 30–35 km"],
-        ["马配专项量", f"近28天 {mp_km} km 分段落在 {fmt_pace(MP_BAND[0])}–{fmt_pace(MP_BAND[1])}", "赛前8周累计 60–100 km，单次 16–25 km"],
+        ["周跑量", f"本周 {W['km']:.0f}｜8周均 {K:.0f} km", bm["weekly_km"].replace("{injury}", injury_focus(cfg))],
+        ["长距离", f"近12周最长 {longest_12w:.1f} km", bm["long_run"]],
+        ["马配专项量", f"近28天 {mp_km} km 分段落在 {fmt_pace(mp_lo)}–{fmt_pace(mp_hi)}", bm["mp_volume"]],
         ["阈值", "见能力面板 20/30/60min", f"≈{fmt_pace(t_pace)}/km 持续 30–40 分钟（分段）"],
-        ["有氧效率", f"HR160 配速 {fmt_speed_pace(f_now['a'] + f_now['b'] * 160) if f_now else '-'}", f"马拉松心率区（约158–163）下 ≤{fmt_pace(goal / 42.195)}"],
-        ["连续性", f"近8周中每周跑≥3次的有 {sum(1 for x in weeks[-8:] if x['n'] >= 3)} 周", "连续 16+ 周无伤、每周 5–6 次"],
-        ["伤痛", f"最近一次疼痛≥3：{last_pain or '无记录'}", "胫骨疼痛 0–2 且不上升"],
+        ["有氧效率", f"HR{m_mid} 配速 {fmt_speed_pace(f_now['a'] + f_now['b'] * m_mid) if f_now else '-'}", f"马拉松心率区（约{m_lo}–{m_hi}）下 ≤{fmt_pace(goal / 42.195)}"],
+        ["连续性", f"近8周中每周跑≥3次的有 {sum(1 for x in weeks[-8:] if x['n'] >= 3)} 周", bm["continuity"]],
+        ["伤痛", f"最近一次疼痛≥3：{last_pain or '无记录'}", f"{injury_focus(cfg)}疼痛 0–2 且不上升"],
     ]
-    L.append(md_table(["维度", "当前", "破3参考标准"], rows))
+    L.append(md_table(["维度", "当前", f"{gl}参考标准"], rows))
     L.append("")
 
     # 9 next week envelope
@@ -1125,7 +1167,7 @@ def weekly(ws=None, sync_err=None):
             break
     lv, st = style(cfg)
     if a4 and last > st["spike"] * a4:
-        env = (last * 0.85, last * 1.0, f"本周是前4周均值的 {last / a4:.1f} 倍（>{st['spike']:.2f}），下周不加量，先观察胫骨/跟腱反应")
+        env = (last * 0.85, last * 1.0, f"本周是前4周均值的 {last / a4:.1f} 倍（>{st['spike']:.2f}），下周不加量，先观察{injury_focus(cfg)}反应")
     elif build_weeks >= st["build_weeks"]:
         env = (last * st["deload"][0], last * st["deload"][1], f"已连续 {build_weeks} 周加量，建议减量周")
     else:

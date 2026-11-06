@@ -1,5 +1,14 @@
+# 凭据（绝不提交；模板是 intervals_icu_api.example.txt）
 intervals_icu_api.txt
+.env
+
+# Intervals.icu 本地缓存，可用 `python3 -m coach sync --full` 重建
 data/
+
+# 自动生成的静态看板，每次跑报告都会重写
+reports/dashboard.html
+
 __pycache__/
 *.pyc
 .DS_Store
+.claude/settings.local.json

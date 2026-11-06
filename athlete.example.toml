@@ -1,0 +1,91 @@
+# 运动员档案与分析参数模板。
+# 用法：`python3 -m coach init` 会把它复制成 athlete.toml；然后把下面的值改成你自己的。
+# 带 “← 必改” 的一定要改；其余是合理的默认值，用了一阵再校准。
+
+[athlete]
+sex = "M"                              # ← 必改
+age = 30                               # ← 必改
+weight_kg = 65.0                       # ← 必改
+weekly_time_budget_h = [5.0, 8.0]      # 每周可用于训练的小时数范围
+other_sports = ["骑行"]                 # 其他运动；会写进“负荷”一节的说明里，没有就留空 []
+
+[race]
+name = "示例马拉松 2027"                 # ← 必改
+goal_label = "破3.5"                    # 目标简称，用在报告和网页里（“距破3.5”）；不写则显示“目标”
+date = "2027-03-07"                    # ← 必改
+goal_s = 12600                         # ← 必改：目标成绩，秒（3:30:00）
+stretch_s = 12300                      # 冲刺目标（可选）
+distance_m = 42195
+season_start = "2026-11-01"            # 备赛起点，看板“赛季”视图从这天开始
+
+[hr]
+# 来源：Intervals.icu 心率设置，或自己做 30 分钟测试得到的 LTHR / 最大心率
+lthr = 165                             # ← 必改：乳酸阈值心率
+max = 190                              # ← 必改：最大心率
+zones = [140, 148, 155, 163, 168, 173, 190]    # ← 必改：Z1..Z7 各区间上限 bpm（和 Intervals.icu 保持一致）
+zone_names = ["Z1 恢复", "Z2 有氧", "Z3 节奏", "Z4 亚阈值", "Z5 超阈值", "Z6 有氧能力", "Z7 无氧"]
+long_run_target = [140, 147]           # 长距离目标心率
+marathon_hr = [145, 152]               # 目标马拉松配速下的心率区间
+aerobic_ref_hr = 143                   # 有氧指数（AeI）标准化心率，约在 Z2 中上
+
+[pb]
+# 秒；没有就删掉对应行。只支持这三个键
+"5km" = 1500
+"10km" = 3150
+"半马" = 6900
+
+[injury]
+history = "无。"                        # ← 必改：伤病史，教练会据此保守安排
+focus = "小腿"                          # 重点防范部位；提示语里会出现“小腿疼痛 0–2”之类
+watch = ["小腿", "跟腱", "足底"]
+
+[devices]
+# 换设备后，口径不同的 HRV/静息心率/VO2max 不与换设备前直接比较；wellness 基线只取这个日期之后的数据。
+# 没换过设备就填你 Intervals.icu 数据的起始日期。
+baseline_since = "2025-01-01"
+baseline_label = "我的手表"             # 当前设备，用在报告和图表标注
+previous_label = "旧设备"               # 换设备前的设备；没换过可忽略
+
+[location]
+# 天气默认位置（Open-Meteo，用于跑力评分的温湿度修正）；GPS 起点距此 >30km 时改用起点坐标。
+# 公开仓库里建议只留一位小数（约 10 km），对逐小时气温/露点没有影响。
+name = "东京"
+lat = 35.7
+lon = 139.7
+
+# 训练计划激进程度 1–5（coach/style.py）：1 保守｜2 稳健｜3 标准｜4 积极｜5 激进
+# 只改变跑量/负荷规则；疼痛与红旗规则在所有档位都不变。可在训练中心「赛季」页调整。
+[plan]
+aggressiveness = 3
+
+# 目标准备度（coach/readiness.py）：回到自己历史峰值以内的每 1 分算 1 份代价，超过峰值的每 1 分算 above_peak_cost 份
+[readiness]
+above_peak_cost = 3.0        # 假设值：新高度的进步比恢复慢约 3 倍；无个体数据可校准
+ready_weeks_before = 2       # 能力需在赛前 2 周（减量开始）到位
+# peak = 50.0                # 默认自动取历史最高的周状态综合跑力
+
+[score]
+# 跑力评分参数，口径见 docs/methodology.md「跑力评分」。心率范围按 LTHR 比例设定：
+#   aerobic_hr ≈ 70%–94% LTHR｜threshold_hr ≈ 91%–102% LTHR｜speed_hr_floor ≈ 99% LTHR
+heat_scale = 0.5               # Hadley 温度+露点修正的缩放系数（作者用 117 次轻松/长距离跑校准）
+rest_hr_fallback = 60          # wellness 与 Intervals 都没有静息心率时使用
+aerobic_hr = [115, 155]        # 有氧维度：60s 稳态片段的心率范围
+threshold_hr = [150, 168]      # 阈值维度：连续 ≥10 分钟落在此范围
+speed_hr_floor = 163           # 速度维度：快段后 60% 的平均心率下限
+weights = { aerobic = 0.4, threshold = 0.3, speed = 0.3 }   # 状态跑力的维度权重
+half_life_days = 14
+window_days = 42
+noise_sd = { aerobic = 1.6, threshold = 2.5, speed = 2.2, endurance = 1.5 }   # 单次跑力相对状态的波动（VDOT 分）；作者校准值，样本小
+
+# 可选：覆盖周复盘里“目标参考标准”表格的文字。默认值是破3（2:59:59）量级的标准，其他目标请按自己的情况改。
+# 可用 {injury} 引用上面的重点部位。
+# [benchmarks]
+# weekly_km = "基础期 50–60，专项期峰值 65–75 km（按{injury}耐受逐步到达）"
+# long_run = "赛前 3 个月起 ≥28km；赛前10周内 3 次 28–32 km"
+# mp_volume = "赛前8周累计 40–70 km，单次 12–20 km"
+# continuity = "连续 12+ 周无伤、每周 4–5 次"
+
+[sync]
+history_start = "2025-01-01"   # 从这天起同步历史数据；越早首次 `sync --full` 越慢（2 年约 7 分钟）
+streams_since = "2025-01-01"   # 逐秒数据的起点
+overlap_days = 10              # 增量同步回看天数

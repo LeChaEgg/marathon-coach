@@ -1,4 +1,5 @@
 """
+python3 -m coach init [--reset --yes]   第一次使用：生成 athlete.toml / 凭据文件模板，建好目录（--reset 清掉仓库里作者的个人数据）
 python3 -m coach today            晨间准备度报告（先增量同步）
 python3 -m coach run [ID|日期]     跑后分析，默认最近一次跑步
 python3 -m coach week [日期]       周复盘，默认最近一个完整周（周日当天=本周）
@@ -25,9 +26,54 @@ def _sync(args):
     return err
 
 
+PERSONAL = ["reports", "plan/season_plan.md", "plan/weeks", "journal/feedback.jsonl",
+            "docs/athlete_background.md", "docs/running_pb.md"]
+
+
+def _init(args):
+    import shutil
+    from . import config
+    root = config.ROOT
+    if args.reset:
+        if not args.yes:
+            print("--reset 会删除仓库里原作者的个人数据，并用 athlete.example.toml 覆盖 athlete.toml：")
+            for x in PERSONAL + ["athlete.toml"]:
+                print("  ", x)
+            print("确认无误请加 --yes。已提交的内容可以用 git 恢复。")
+            raise SystemExit(2)
+        for x in PERSONAL:
+            t = root / x
+            if t.is_dir():
+                shutil.rmtree(t)
+            elif t.exists():
+                t.unlink()
+        (root / "athlete.toml").unlink(missing_ok=True)
+        print("已清掉原作者的个人数据。")
+    for d in ("data", "reports/daily", "reports/runs", "reports/weekly", "plan/weeks", "journal"):
+        (root / d).mkdir(parents=True, exist_ok=True)
+    (root / "journal/feedback.jsonl").touch()
+    made = []
+    for dst, src in (("athlete.toml", "athlete.example.toml"), ("intervals_icu_api.txt", "intervals_icu_api.example.txt")):
+        if not (root / dst).exists():
+            shutil.copy(root / src, root / dst)
+            made.append(dst)
+    print("已生成：" + "、".join(made) if made else "athlete.toml 和 intervals_icu_api.txt 都已存在，未改动。")
+    print("""
+下一步：
+  1. 编辑 athlete.toml，改掉带“← 必改”的项（目标、心率、伤病史等）
+  2. 编辑 intervals_icu_api.txt，填入 Intervals.icu 的 athlete id 和 API key
+     （或设置环境变量 INTERVALS_ICU_ID / INTERVALS_ICU_TOKEN）
+  3. python3 -m coach sync --full        # 首次全量同步，历史越长越慢
+  4. python3 -m coach serve --open       # 打开训练中心；或让 agent 跑 `python3 -m coach today`""")
+
+
 def main():
     p = argparse.ArgumentParser(prog="python3 -m coach", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    ini = sub.add_parser("init", help="第一次使用：生成配置模板、建目录")
+    ini.add_argument("--reset", action="store_true", help="清掉仓库里原作者的个人数据（报告、计划、反馈、背景）")
+    ini.add_argument("--yes", action="store_true", help="确认 --reset")
 
     s = sub.add_parser("sync")
     s.add_argument("--full", action="store_true")
@@ -65,12 +111,19 @@ def main():
     lg.add_argument("--note")
 
     args = p.parse_args()
+    if args.cmd == "init":
+        _init(args)
+        return
     if args.cmd == "serve":
         from . import server
         server.serve(args.host, args.port, args.open)
         return
     if args.cmd == "sync":
-        store.sync(full=args.full, fetch_streams=not args.no_streams)
+        from .api import ApiError
+        try:
+            store.sync(full=args.full, fetch_streams=not args.no_streams)
+        except ApiError as e:
+            raise SystemExit(f"同步失败：{e}")
         if args.rebuild:
             print(f"重算 {store.rebuild_metrics(force=True)} 个", file=sys.stderr)
         return

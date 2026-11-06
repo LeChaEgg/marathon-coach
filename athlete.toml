@@ -9,6 +9,7 @@ other_sports = ["攀岩", "骑行通勤", "步行"]
 
 [race]
 name = "东京马拉松 2027"
+goal_label = "破3"       # 报告和网页里对目标的简称（“距破3”）；不写则显示“目标”
 date = "2027-03-07"
 goal_s = 10799          # 2:59:59；目标是越快越好，破3为主目标
 stretch_s = 10500       # 2:55:00 冲刺参考，仅在1月测试后决定
@@ -23,6 +24,7 @@ max = 195
 zones = [147, 156, 163, 172, 177, 182, 195]
 zone_names = ["Z1 恢复", "Z2 有氧", "Z3 节奏", "Z4 亚阈值", "Z5 超阈值", "Z6 有氧能力", "Z7 无氧"]
 long_run_target = [145, 154]   # 长距离目标心率，平路上限 156
+marathon_hr = [158, 163]       # 目标马拉松配速下的心率区间（用于心率-配速预测和“有氧效率”对照）
 aerobic_ref_hr = 150           # 有氧指数（AeI）标准化心率
 
 [pb]
@@ -33,17 +35,22 @@ aerobic_ref_hr = 150           # 有氧指数（AeI）标准化心率
 
 [injury]
 history = "接近300km/月且强度安排不合理时出现胫骨疼痛并停训，未经医学确认（疑似胫骨应力相关）。"
+focus = "胫骨"                          # 提示语里重点防范的部位（“胫骨风险”“胫骨疼痛 0–2”）
 watch = ["胫骨内侧/前侧", "跟腱", "足底"]
 
 [devices]
-# 2026年5–6月从 Garmin 换到 Apple Watch；此前的 HRV/静息心率/VO2max 不与之后直接比较
-apple_watch_since = "2026-06-01"
+# 换设备后，口径不同的 HRV/静息心率/VO2max 不与换设备前直接比较；wellness 基线只取这个日期之后的数据。
+# 没换过设备就填 history_start（或不写，默认取 [sync] history_start）。
+baseline_since = "2026-06-01"     # 2026年5–6月从 Garmin 换到 Apple Watch
+baseline_label = "Apple Watch"    # 当前设备，用在报告和图表标注
+previous_label = "Garmin"         # 换设备前的设备
 
 [location]
-# 天气默认位置（Open-Meteo）；GPS 起点距此 >30km 时改用起点坐标
+# 天气默认位置（Open-Meteo）；GPS 起点距此 >30km 时改用起点坐标。
+# 公开仓库里坐标只保留一位小数（约 10 km），对逐小时气温/露点没有影响。
 name = "茅ヶ崎"
-lat = 35.334
-lon = 139.404
+lat = 35.3
+lon = 139.4
 
 # 训练计划激进程度 1–5（coach/style.py）：1 保守｜2 稳健｜3 标准｜4 积极｜5 激进
 # 只改变跑量/负荷规则；疼痛与红旗规则在所有档位都不变。可在训练中心「赛季」页调整。
@@ -67,7 +74,6 @@ weights = { aerobic = 0.4, threshold = 0.3, speed = 0.3 }   # 状态跑力的维
 half_life_days = 14
 window_days = 42
 noise_sd = { aerobic = 1.6, threshold = 2.5, speed = 2.2, endurance = 1.5 }   # 单次跑力相对状态的波动（VDOT 分），2026-10 用苹果时代跑步校准，样本小
-# canvas_path 已弃用：Cursor Canvas 不再生成；使用本地网页 python3 -m coach serve
 
 [sync]
 history_start = "2024-01-01"

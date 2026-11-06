@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>训练中心 · 东京马拉松 2027</title>
+<title>训练中心</title>
 <style>
 :root {
   color-scheme: light;
@@ -294,13 +294,13 @@ function fbForm({ activity, date, type }) {
   return `<form class="fb" data-activity="${activity || ""}" data-date="${date || ""}">
     ${run ? `<label>RPE 1–10<input name="rpe" type="number" min="1" max="10" step="0.5" inputmode="decimal"></label>` : ""}
     <label>疼痛 0–10<input name="pain" type="number" min="0" max="10" step="0.5" inputmode="decimal"></label>
-    <label class="${run ? "" : "w2"}">疼痛位置<input name="pain_loc" placeholder="如 左胫骨内侧；无则留空"></label>
+    <label class="${run ? "" : "w2"}">疼痛位置<input name="pain_loc" placeholder="如 ${S.labels.injury}内侧；无则留空"></label>
     <label>出现时间<select name="pain_when"><option value="">–</option><option>跑中</option><option>跑后</option><option>次日</option><option>晨起</option></select></label>
     ${run ? `<label>步态<select name="gait"><option value="">–</option><option>正常</option><option>改变</option></select></label>
     <label>异常疲劳<input name="fatigue" placeholder="无 / 描述"></label>
     <label>补给<input name="fuel" placeholder="水、能量胶…"></label>
     <label>修正跑步类型<select name="type"><option value="">不修改（${esc(typeName(type))}）</option>${S.types.map((t) => `<option value="${t.k}">${esc(t.name)}</option>`).join("")}</select></label>` : ""}
-    <label class="w4">备注<textarea name="note" placeholder="${run ? "体感、路况、与计划的出入…" : "晨起胫骨按压 / 单脚跳、睡眠、整体状态…"}"></textarea></label>
+    <label class="w4">备注<textarea name="note" placeholder="${run ? "体感、路况、与计划的出入…" : "晨起${S.labels.injury}按压 / 单脚跳、睡眠、整体状态…"}"></textarea></label>
     <label class="w2" style="flex-direction:row;align-items:center;gap:8px;color:var(--text-2);font-size:13px"><input type="checkbox" name="red_flag">红旗：骨性压痛 / 跳跃痛 / 跛行 / 疼痛持续到次日 / 全身病症</label>
     <div class="w2" style="text-align:right"><button class="btn primary" type="submit">记录反馈</button></div>
   </form>`;
@@ -411,7 +411,7 @@ pages.today = async (arg) => {
   ${miss}
   <div class="cols">
     <div class="stack">${planCard}${coach}${flags}
-      ${isToday ? `<details class="sec" data-k="daycheck"><summary>记录今天的身体状况（晨起胫骨按压、疼痛、疲劳）</summary><div class="md" style="padding-left:2px">${fbForm({ date: t.date })}</div></details>` : ""}
+      ${isToday ? `<details class="sec" data-k="daycheck"><summary>记录今天的身体状况（晨起${S.labels.injury}按压、疼痛、疲劳）</summary><div class="md" style="padding-left:2px">${fbForm({ date: t.date })}</div></details>` : ""}
       <div id="rep"></div>
     </div>
     <aside class="stack">
@@ -468,7 +468,7 @@ pages.runs = async () => {
   const html = `<div class="hero"><div><div class="eyebrow">最近 ${rows.length} 次</div><h1>跑步记录</h1></div><div class="seg" id="grp">${groups.map(([k, n]) => `<button data-g="${k}" class="${k === grp ? "on" : ""}">${n}</button>`).join("")}</div></div>
   <section class="card"><div class="tw"><table class="pick"><tr><th>日期</th><th>类型</th><th class="n">km</th><th class="n">配速</th><th class="n">HR</th><th class="n">跑力</th><th class="n">脱钩</th><th class="n">负荷</th><th class="n">气温</th><th>状态</th></tr>
   ${rows.map((r) => `<tr data-href="#/run/${r.id}"><td>${r.d.slice(2)} 周${wdOf(r.d)}</td><td>${esc(r.label)}</td><td class="n">${f1(r.km)}</td><td class="n">${fmtPace(r.pace)}</td><td class="n">${r.hr ?? "–"}</td><td class="n"><b>${f1(r.comp)}</b>${r.conf === "低" ? '<span class="sub"> 低</span>' : ""}</td><td class="n">${r.dec == null ? "–" : sgn(r.dec) + "%"}</td><td class="n">${r.load ?? "–"}</td><td class="n">${r.temp == null ? "–" : Math.round(r.temp) + "°"}</td><td>${r.pain >= 3 ? `<span class="chip r">疼痛 ${r.pain}</span> ` : r.pain > 0 ? `<span class="chip y">疼痛 ${r.pain}</span> ` : ""}${done.has(r.id) ? '<span class="chip g">已分析</span>' : fb.has(r.id) ? '<span class="chip">已反馈</span>' : ""}</td></tr>`).join("")}</table></div></section>
-  <p class="cap">跑力 = 单次综合评分（VDOT 刻度，破3 ≈ ${S.need}）；“低” = 低置信度，不作为判断依据。跑步机配速误差大，只作参考。</p>`;
+  <p class="cap">跑力 = 单次综合评分（VDOT 刻度，${S.labels.goal} ≈ ${S.need}）；“低” = 低置信度，不作为判断依据。跑步机配速误差大，只作参考。</p>`;
   return { html, mount: () => $("#grp").querySelectorAll("button").forEach((b) => (b.onclick = () => { store.set("runs.grp", b.dataset.g); render(); })) };
 };
 
@@ -476,19 +476,19 @@ pages.run = async (id) => {
   const v = await api(`/api/run?id=${encodeURIComponent(id || (S.latest && S.latest.run.id))}`), r = v.run, need = S.need;
   const ztot = v.zones.reduce((a, z) => a + z.secs, 0) || 1;
   const dims = DIMS.filter((m) => r[m.r] != null), lo = 38, hi = 58, pct = (x) => Math.max(0, Math.min(100, ((x - lo) / (hi - lo)) * 100));
-  const dimRows = dims.map((m) => `<div class="dim"><span>${m.name}</span><div class="t"><i style="width:${pct(r[m.r])}%;background:var(${m.color})"></i>${v.median28[m.r] != null ? `<em style="left:${pct(v.median28[m.r])}%" title="近 28 天中位 ${v.median28[m.r]}"></em>` : ""}<u style="left:${pct(need)}%" title="破3 ${need}"></u></div><span class="num" style="text-align:right"><b>${f1(r[m.r])}</b> <span class="sub">${sgn(r[m.r] - need)}</span></span></div>`).join("");
+  const dimRows = dims.map((m) => `<div class="dim"><span>${m.name}</span><div class="t"><i style="width:${pct(r[m.r])}%;background:var(${m.color})"></i>${v.median28[m.r] != null ? `<em style="left:${pct(v.median28[m.r])}%" title="近 28 天中位 ${v.median28[m.r]}"></em>` : ""}<u style="left:${pct(need)}%" title="${S.labels.goal} ${need}"></u></div><span class="num" style="text-align:right"><b>${f1(r[m.r])}</b> <span class="sub">${sgn(r[m.r] - need)}</span></span></div>`).join("");
   const wx = r.temp != null ? `${f1(r.temp, 0)}°C · 露点 ${f1(r.dew, 0)}° · 湿度 ${r.rh}%` : "无天气数据";
   const coach = v.conclusion ? coachCard(v.conclusion, "教练结论 · 跑后分析")
     : emptyCoach("这次跑步还没有教练分析", genBtn("run", v.report ? "重新同步并更新数据报告" : "同步并生成数据报告", r.id), `跑完了，分析一下 ${r.d} 的跑步（${r.id}）`, v.feedback.length ? "" : "先在下面填主观反馈，分析会更准。");
   const html = `
   <div class="hero"><div><div class="eyebrow"><a href="#/runs">跑步记录</a> · ${r.d} 周${wdOf(r.d)} ${r.t}${v.device ? " · " + esc(v.device) : ""}</div><h1>${esc(r.label)} ${f1(r.km, 2)} km</h1>
-    <div class="actions" style="margin-top:8px">${r.conf ? `<span class="chip ${r.conf === "低" ? "y" : ""}">评分置信度 ${r.conf}</span>` : ""}${r.tm ? '<span class="chip y">跑步机</span>' : ""}${r.era !== "apple" ? '<span class="chip">Garmin 时代</span>' : ""}${v.others.map((o) => `<a class="chip" href="#/run/${o.id}">同日 ${o.t} ${o.km} km</a>`).join("")}</div></div>
+    <div class="actions" style="margin-top:8px">${r.conf ? `<span class="chip ${r.conf === "低" ? "y" : ""}">评分置信度 ${r.conf}</span>` : ""}${r.tm ? '<span class="chip y">跑步机</span>' : ""}${r.d < S.baseline_since ? `<span class="chip">${esc(S.labels.previous)}时代</span>` : ""}${v.others.map((o) => `<a class="chip" href="#/run/${o.id}">同日 ${o.t} ${o.km} km</a>`).join("")}</div></div>
     <div class="pager">${v.prev ? `<a class="btn sm" href="#/run/${v.prev}">‹ 上一次</a>` : ""}${v.next ? `<a class="btn sm" href="#/run/${v.next}">下一次 ›</a>` : ""}</div></div>
   <div class="tiles">
     ${tile("时间", fmtDur(r.mt), v.et > r.mt + 60 ? `含停顿 ${fmtDur(v.et)}` : "")}
     ${tile("配速", fmtPace(r.pace), v.gap ? `坡度修正 ${fmtPace(v.gap)}` : "", "/km")}
     ${tile("心率", r.hr ?? "–", `最高 ${v.hr_max ?? "–"}`, "bpm")}
-    ${tile("跑力", f1(r.comp), r.comp != null ? `距破3 ${sgn(r.comp - need)}${v.median28.comp != null ? ` · 28 天中位 ${v.median28.comp}` : ""}` : "未评分")}
+    ${tile("跑力", f1(r.comp), r.comp != null ? `距${S.labels.goal} ${sgn(r.comp - need)}${v.median28.comp != null ? ` · 28 天中位 ${v.median28.comp}` : ""}` : "未评分")}
     ${tile("脱钩", r.dec == null ? "–" : sgn(r.dec), r.dec == null ? "" : r.dec < 5 ? "有氧耐力良好" : r.dec < 10 ? "一般" : "偏高（耐力或热/脱水）", "%")}
     ${tile("负荷", r.load ?? "–", wx)}
   </div>
@@ -502,7 +502,7 @@ pages.run = async (id) => {
       <div id="rep"></div>
     </div>
     <aside class="stack">
-      ${dims.length ? `<section class="card"><div class="eyebrow">本次跑力 · VDOT 刻度</div>${dimRows}<p class="cap">粗线 = 破3（${need}）；细线 = 近 28 天中位。单次波动 ±1.5 分内属正常。</p></section>` : ""}
+      ${dims.length ? `<section class="card"><div class="eyebrow">本次跑力 · VDOT 刻度</div>${dimRows}<p class="cap">粗线 = ${S.labels.goal}（${need}）；细线 = 近 28 天中位。单次波动 ±1.5 分内属正常。</p></section>` : ""}
       ${v.state.composite != null ? `<section class="card"><div class="eyebrow">当日状态跑力（42 天加权）</div><dl class="kv">${DIMS.filter((m) => v.state[m.k] != null).map((m) => `<dt>${m.name}</dt><dd>${m.k === "composite" ? "<b>" : ""}${f1(v.state[m.k])}${m.k === "composite" ? "</b>" : ""}${v.state[m.k + "_stale"] ? ' <span class="sub">旧</span>' : ""}</dd>`).join("")}</dl></section>` : ""}
       ${ztot > 1 ? `<section class="card"><div class="eyebrow">心率区间</div><div class="stackbar" style="margin:8px 0 10px">${v.zones.map((z, k) => (z.secs ? `<i style="flex:${z.secs};background:var(--z${k + 1})" title="${esc(z.name)} ${fmtDur(z.secs)}"></i>` : "")).join("")}</div><dl class="kv">${v.zones.filter((z) => z.secs).map((z) => `<dt><i class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--z${v.zones.indexOf(z) + 1})"></i>${esc(z.name)}</dt><dd>${fmtDur(z.secs)} · ${Math.round((z.secs / ztot) * 100)}%</dd>`).join("")}</dl></section>` : ""}
       <section class="card"><div class="eyebrow">跑姿与效率</div><dl class="kv"><dt>步频</dt><dd>${r.cad ?? "–"} spm</dd><dt>步幅</dt><dd>${r.step ?? "–"} m</dd><dt>触地时间</dt><dd>${r.gct ?? "–"} ms</dd><dt>EF</dt><dd>${v.ef ?? "–"}</dd><dt>AeI（HR150 等效）</dt><dd>${r.aei == null ? "–" : fmtPace(r.aei) + "/km"}</dd><dt>累计爬升</dt><dd>${v.elev ?? "–"} m</dd><dt>热修正</dt><dd>${r.heat != null ? "+" + r.heat + "%" : "–"}</dd></dl></section>
@@ -529,11 +529,11 @@ pages.season = async () => {
   <div class="hero"><div><div class="eyebrow">${esc(S.race.name)} · ${S.race.date} · 目标 ${fmtDur(S.race.goal_s)}（${fmtPace(S.race.goal_s / 42.195)}/km）</div><h1>距比赛 ${S.race.days} 天</h1></div></div>
   <div class="cols">
     <div class="stack">
-      <section class="card"><div class="eyebrow">破3进度（按难度加权，模型估计，不是成功率）</div>
+      <section class="card"><div class="eyebrow">${S.labels.goal}进度（按难度加权，模型估计，不是成功率）</div>
         <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px"><span class="v" style="font-size:38px;font-weight:650">${rd.progress == null ? "–" : Math.round(rd.progress) + "%"}</span><span class="sub">匀速完成所需进度线今天在 ${f1(rd.progress_expected, 0)}% · ${rd.ahead >= 0 ? "领先" : "落后"} ${f1(Math.abs(rd.ahead))} 分</span></div>
         <div class="bar"><i style="width:${Math.max(0, Math.min(100, rd.progress || 0))}%"></i><u style="left:${Math.max(0, Math.min(100, rd.progress_expected || 0))}%" title="所需进度线"></u></div>
         <div class="tiles" style="margin-top:16px">
-          ${tile("状态综合跑力", f1(rd.now), `破3 需要 ${rd.need}（差 ${f1(Math.abs(rd.gap))}）`)}
+          ${tile("状态综合跑力", f1(rd.now), `${S.labels.goal} 需要 ${rd.need}（差 ${f1(Math.abs(rd.gap))}）`)}
           ${tile("历史峰值", f1(rd.peak), `${rd.peak_date || ""} · 之内 ${f1(rd.regain_left)} 分 / 之上 ${f1(rd.new_left)} 分`)}
           ${tile("所需进步速度", f1(rd.req_rate, 2), `到 ${md5(rd.ready_by || "")} 还有 ${f1(rd.weeks_left, 0)} 周${rd.req_ratio ? ` · 历史最快 8 周的 ${Math.round(rd.req_ratio * 100)}%` : ""}`, "分/周")}
           ${tile("近 8 周周均", f1(vol.k8), vol.plan_k8 ? `赛前 8 周计划 ${f1(vol.plan_k8, 0)} km` : "", "km")}
@@ -557,7 +557,7 @@ pages.season = async () => {
   const mount = () => {
     $("#lv").querySelectorAll("button").forEach((b) => (b.onclick = () => { store.set("style.sel", +b.dataset.lv); render(); }));
     const x = [T(S.season.start) - 4 * DAY, T(S.race.date) + 3 * DAY], mid = (w) => T(w.ws) + 3 * DAY;
-    chart($("#c-state"), { x, height: 220, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `破3 ${S.need}`, strong: 1, left: 1 }], vlines: [{ x: T(S.race.date), label: "比赛", left: 1 }], series: [
+    chart($("#c-state"), { x, height: 220, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `${S.labels.goal} ${S.need}`, strong: 1, left: 1 }], vlines: [{ x: T(S.race.date), label: "比赛", left: 1 }], series: [
       { name: "所需进度线", color: "--neutral", type: "line", dash: "5 4", gap: 99, pts: wk.filter((w) => w.req != null).map((w) => ({ x: T(w.ws) + 6 * DAY, y: w.req })), fmt: (p) => f1(p.y) },
       { name: "状态综合", color: "--s1", type: "line", markers: 1, gap: 99, pts: wk.filter((w) => w.state && w.state.composite != null).map((w) => ({ x: Math.min(T(w.ws) + 6 * DAY, T(S.today.date)), y: w.state.composite })), fmt: (p) => f1(p.y), endLabel: (p) => f1(p.y) },
     ] });
@@ -572,12 +572,12 @@ pages.season = async () => {
 pages.ability = async () => {
   const d = S.now.dims, range = store.get("ab.range", "12w"), show = store.get("ab.dims", { composite: true, aerobic: true, threshold: true, speed: true, endurance: false }), dots = store.get("ab.dots", false);
   const html = `
-  <div class="hero"><div><div class="eyebrow">状态跑力 = 42 天加权、半衰期 14 天 · VDOT 刻度 · 破3 ≈ ${S.need}</div><h1>能力</h1></div>
+  <div class="hero"><div><div class="eyebrow">状态跑力 = 42 天加权、半衰期 14 天 · VDOT 刻度 · ${S.labels.goal} ≈ ${S.need}</div><h1>能力</h1></div>
     <div class="seg" id="range">${[["12w", "近 12 周"], ["season", "赛季"], ["all", "全部"]].map(([k, n]) => `<button data-r="${k}" class="${k === range ? "on" : ""}">${n}</button>`).join("")}</div></div>
-  <div class="tiles">${DIMS.map((m) => { const x = d[m.k]; return `<div class="tile"><div class="l"><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;background:var(${m.color})"></i>${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距破3 ${sgn(x.v - S.need)} · 4 周 ${sgn(x.delta)}<br>${x.stale ? `<span class="chip y">证据 ${x.age} 天前</span>` : x.age != null ? `最近证据 ${x.age} 天前` : "各维度加权"}` : "无证据"}</div></div>`; }).join("")}</div>
+  <div class="tiles">${DIMS.map((m) => { const x = d[m.k]; return `<div class="tile"><div class="l"><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;background:var(${m.color})"></i>${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距${S.labels.goal} ${sgn(x.v - S.need)} · 4 周 ${sgn(x.delta)}<br>${x.stale ? `<span class="chip y">证据 ${x.age} 天前</span>` : x.age != null ? `最近证据 ${x.age} 天前` : "各维度加权"}` : "无证据"}</div></div>`; }).join("")}</div>
   <section class="card" style="margin-top:18px"><h2>跑力随时间变化</h2>
     <div class="legend" id="toggles">${DIMS.map((m) => `<label><input type="checkbox" data-k="${m.k}" ${show[m.k] ? "checked" : ""}><i class="ln" style="border-color:var(${m.color})"></i>${m.name}</label>`).join("")}<label style="margin-left:10px"><input type="checkbox" data-k="__dots" ${dots ? "checked" : ""}>单次跑步的点</label></div>
-    <div class="chart" id="c-score"></div><p class="cap">线 = 状态跑力；点 = 单次评分（空心 = 低置信度），点击打开那次跑步。虚线是破3与 PB 对应的 VDOT。Garmin 时代（${S.apple_since} 之前）口径不同，只作参考。</p></section>
+    <div class="chart" id="c-score"></div><p class="cap">线 = 状态跑力；点 = 单次评分（空心 = 低置信度），点击打开那次跑步。虚线是${S.labels.goal}与 PB 对应的 VDOT。${S.labels.previous}时代（${S.baseline_since} 之前）口径不同，只作参考。</p></section>
   <div class="grid2" style="margin-top:14px">
     <section class="card"><h2>周跑量（km）</h2><div class="chart" id="c-vol"></div></section>
     <section class="card"><h2>强度分布（每周分钟）</h2>${legend([{ name: "低 Z1–2", color: "--i1" }, { name: "中 Z3", color: "--i2" }, { name: "高 Z4+", color: "--i3" }])}<div class="chart" id="c-int"></div></section>
@@ -597,7 +597,7 @@ pages.ability = async () => {
       series.push({ name: m.name, color: m.color, type: "line", w: m.k === "composite" ? 2.6 : 2, gap: 3, pts: S.daily.map((q) => ({ x: T(q.d), y: q[m.k] ?? null, stale: q[m.k + "_stale"] })), fmt: (p) => f1(p.y) + (p.stale ? "（旧）" : "") });
       if (dots) series.push({ name: m.name + " 单次", color: m.color, type: "dot", r: 4, opacity: 0.8, click: (p) => (location.hash = "#/run/" + p.run.id), pts: S.runs.filter((r) => r[m.r] != null).map((r) => ({ x: T(r.d), y: r[m.r], run: r, hollow: r.conf === "低" })) });
     });
-    chart($("#c-score"), { x, series, height: 300, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `破3 ${S.need}`, strong: 1 }].concat(S.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}`, left: 1 }))), vlines: [{ x: T(S.apple_since), label: "Apple Watch" }, { x: T(S.race.date), label: "比赛", left: 1 }],
+    chart($("#c-score"), { x, series, height: 300, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `${S.labels.goal} ${S.need}`, strong: 1 }].concat(S.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}`, left: 1 }))), vlines: [{ x: T(S.baseline_since), label: S.labels.baseline }, { x: T(S.race.date), label: "比赛", left: 1 }],
       dotTip: (p) => `<b>${p.run.d} ${esc(p.run.label)} ${p.run.km} km</b><br>综合 ${f1(p.run.comp)}（${p.run.conf || "–"}）· 有氧 ${f1(p.run.A)} · 阈值 ${f1(p.run.T)} · 速度 ${f1(p.run.S)} · 耐力 ${f1(p.run.E)}<br>${fmtPace(p.run.pace)}/km · HR ${p.run.hr ?? "–"}` });
     const Wk = S.weeks.map((w) => ({ ...w, x: T(w.ws) + 3 * DAY })), wopt = { x, unit: 7 * DAY, snap: 0.5, height: 170 };
     const line = (id, key, color, fmt, extra = {}) => chart($(id), { ...wopt, fmt: (v) => v, ...extra, series: [{ name: "周中位", color, type: "line", gap: 2.5, pts: Wk.filter((w) => w[key]).map((w) => ({ x: w.x, y: w[key] })), fmt }] });
@@ -642,7 +642,7 @@ async function render() {
     if (p.mount) await p.mount();
   } catch (e) { if (seq === renderSeq) view.innerHTML = `<div class="banner">加载失败：${esc(e.message)}</div>`; }
 }
-async function reload() { S = await api("/api/state"); await render(); }
+async function reload() { S = await api("/api/state"); document.title = "训练中心 · " + S.race.name; await render(); }
 
 document.addEventListener("click", async (ev) => {
   const copy = ev.target.closest("[data-copy]");

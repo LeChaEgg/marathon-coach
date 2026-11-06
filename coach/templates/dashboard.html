@@ -76,13 +76,13 @@ table.runs tr.sel td { background: var(--panel); font-weight: 600; }
       <section class="panel">
         <h2>跑力随时间变化（VDOT 刻度）</h2>
         <div class="chart" id="c-score"></div>
-        <p class="cap">线 = 状态跑力（42 天加权、半衰期 14 天）；点 = 单次跑步的维度值（空心 = 低置信度，如跑步机）。点击任意点查看明细。虚线：破3所需与 PB 对应的 VDOT。Garmin 时代静息心率口径不同，仅作参考。</p>
+        <p class="cap">线 = 状态跑力（42 天加权、半衰期 14 天）；点 = 单次跑步的维度值（空心 = 低置信度，如跑步机）。点击任意点查看明细。虚线：{{GOAL}}所需与 PB 对应的 VDOT。{{PREV}}时代静息心率口径不同，仅作参考。</p>
       </section>
       <div class="grid2">
         <section><h2>周跑量（km）与最长一次</h2><div class="chart" id="c-vol"></div><p class="cap">柱 = 周跑量；点 = 当周最长一次跑。</p></section>
         <section><h2>强度分布（每周各区间分钟数）</h2><div class="chart" id="c-int"></div><p class="cap">Z1–2 / Z3 / Z4+，按跑步心率区间时间。</p></section>
         <section><h2>有氧指数 AeI（HR150 等效配速，越低越快）</h2><div class="chart" id="c-aei"></div><p class="cap">点 = 单次轻松/长距离跑；线 = 周中位。未做天气修正，夏季偏慢。</p></section>
-        <section><h2>跑姿：轻松跑触地时间（ms）与步频（spm）</h2><div class="chart" id="c-form"></div><p class="cap">周中位；Apple Watch 与 Garmin 口径不同。</p></section>
+        <section><h2>跑姿：轻松跑触地时间（ms）与步频（spm）</h2><div class="chart" id="c-form"></div><p class="cap">周中位；{{BASE}}与{{PREV}}口径不同。</p></section>
         <section><h2>HRV 与静息心率</h2><div class="chart" id="c-well"></div><p class="cap">每日值；三角 = 主观反馈疼痛 ≥1（高度 = 疼痛分数，右轴）。</p></section>
         <section><h2>环境：热修正幅度（%）</h2><div class="chart" id="c-heat"></div><p class="cap">每次跑步按温度+露点（Hadley）换算的速度修正；越高说明当天越热越湿。</p></section>
       </div>
@@ -231,7 +231,7 @@ const runById = Object.fromEntries(DATA.runs.map((r) => [r.id, r]));
 
 function renderMeta() {
   const n = DATA.now, r = DATA.race;
-  let s = `${esc(r.name)} ${r.date}｜距比赛 ${r.days} 天｜破3目标 ${fmtDur(r.goal_s)}（${fmtPace(r.goal_s / 42.195)}/km）｜数据同步 ${esc(DATA.synced || "-")}，生成 ${esc(DATA.generated)}｜天气：${esc(DATA.location)}（Open-Meteo）`;
+  let s = `${esc(r.name)} ${r.date}｜距比赛 ${r.days} 天｜${DATA.labels.goal}目标 ${fmtDur(r.goal_s)}（${fmtPace(r.goal_s / 42.195)}/km）｜数据同步 ${esc(DATA.synced || "-")}，生成 ${esc(DATA.generated)}｜天气：${esc(DATA.location)}（Open-Meteo）`;
   if (DATA.weather_error) s += `｜<span class="warn">天气获取失败：${esc(DATA.weather_error)}</span>`;
   $("#meta").innerHTML = s;
 }
@@ -240,8 +240,8 @@ function renderKpis() {
   const d = DATA.now.dims, c = d.composite || {};
   const age = (x) => (x ? (x.stale ? `<span class="warn">${x.age} 天前（旧）</span>` : `最近证据 ${x.age} 天前`) : "");
   const rd = DATA.readiness || {};
-  let h = `<div class="kpi main"><div class="l">状态综合跑力</div><div class="v">${f1(c.v)}</div><div class="s">距破3 ${gapTo(c.v)}｜4周 ${sgn(c.delta)}｜破3进度 ${rd.progress != null ? Math.round(rd.progress) + "%" : "-"}（难度加权）</div></div>`;
-  DIMS.slice(1).forEach((m) => { const x = d[m.k]; h += `<div class="kpi"><div class="l"><span class="sw" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${css(m.color)}"></span> ${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距破3 ${gapTo(x.v)}｜4周 ${sgn(x.delta)}` : "无证据"}<br>${age(x)}</div></div>`; });
+  let h = `<div class="kpi main"><div class="l">状态综合跑力</div><div class="v">${f1(c.v)}</div><div class="s">距${DATA.labels.goal} ${gapTo(c.v)}｜4周 ${sgn(c.delta)}｜${DATA.labels.goal}进度 ${rd.progress != null ? Math.round(rd.progress) + "%" : "-"}（难度加权）</div></div>`;
+  DIMS.slice(1).forEach((m) => { const x = d[m.k]; h += `<div class="kpi"><div class="l"><span class="sw" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${css(m.color)}"></span> ${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距${DATA.labels.goal} ${gapTo(x.v)}｜4周 ${sgn(x.delta)}` : "无证据"}<br>${age(x)}</div></div>`; });
   const n = DATA.now;
   h += `<div class="kpi"><div class="l">全马预测</div><div class="v" style="font-size:18px">${fmtDur(n.marathon_daniels)}</div><div class="s">Daniels（状态跑力，乐观上限）<br>Tanda ${fmtDur(n.marathon_tanda)}（8周周均 ${n.k8} km）</div></div>`;
   $("#kpis").innerHTML = h;
@@ -270,8 +270,8 @@ function renderCharts() {
     if (state.dots || state.sel) series.push({ name: m.name, color: m.color, type: "dot", r: m.k === "composite" ? 3.6 : 2.4, opacity: m.k === "composite" ? 0.95 : 0.7, click: selectRun,
       pts: DATA.runs.filter((r) => r[m.r] != null && (state.dots || r.id === state.sel)).map((r) => ({ x: T(r.d), y: r[m.r], run: r, hollow: r.conf === "低", sel: r.id === state.sel })) });
   });
-  const refs = [{ y: DATA.need, label: `破3 ${DATA.need}`, color: "--accent" }].concat(DATA.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}` })));
-  chart($("#c-score"), { x, series, refs, height: 320, fmt: (v) => (+v).toFixed(0), dotTip: (p) => runTip(p.run), vlines: [{ x: T(DATA.apple_since), label: "Apple Watch" }, { x: T(DATA.race.date), label: "比赛日" }] });
+  const refs = [{ y: DATA.need, label: `${DATA.labels.goal} ${DATA.need}`, color: "--accent" }].concat(DATA.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}` })));
+  chart($("#c-score"), { x, series, refs, height: 320, fmt: (v) => (+v).toFixed(0), dotTip: (p) => runTip(p.run), vlines: [{ x: T(DATA.baseline_since), label: DATA.labels.baseline }, { x: T(DATA.race.date), label: "比赛日" }] });
 
   const W = DATA.weeks.map((w) => ({ ...w, x: T(w.ws) + 3 * DAY }));
   chart($("#c-vol"), { x, height: 200, fmt: (v) => v, series: [
@@ -315,9 +315,9 @@ function selectRun(p) {
   state.sel = r.id;
   const bar = (label, v, color) => v == null ? "" : `<div class="dimrow"><span>${label}</span><div class="dimbar"><i style="width:${Math.max(0, Math.min(100, ((v - 35) / 25) * 100))}%;background:${css(color)}"></i></div><b>${v.toFixed(1)}</b></div>`;
   let h = `<h2>${r.d} ${r.t} · ${esc(r.label)}</h2><div class="sub">${r.km} km｜${fmtDur(r.mt)}｜${fmtPace(r.pace)}/km｜HR ${r.hr ?? "-"}｜负荷 ${r.load ?? "-"}</div>`;
-  h += `<div style="margin:10px 0 4px;font-size:26px;font-weight:600;color:${css("--accent")}">${f1(r.comp)} <span style="font-size:13px;color:${css("--muted")}">距破3 ${gapTo(r.comp)}｜置信度 ${r.conf || "-"}</span></div>`;
+  h += `<div style="margin:10px 0 4px;font-size:26px;font-weight:600;color:${css("--accent")}">${f1(r.comp)} <span style="font-size:13px;color:${css("--muted")}">距${DATA.labels.goal} ${gapTo(r.comp)}｜置信度 ${r.conf || "-"}</span></div>`;
   h += bar("有氧", r.A, "--aerobic") + bar("阈值", r.T, "--threshold") + bar("速度", r.S, "--speed") + bar("耐力", r.E, "--endurance");
-  h += `<div class="sub" style="margin-top:4px">条形刻度 35–60；破3 ≈ ${DATA.need}</div><table style="margin-top:10px">`;
+  h += `<div class="sub" style="margin-top:4px">条形刻度 35–60；${DATA.labels.goal} ≈ ${DATA.need}</div><table style="margin-top:10px">`;
   h += `<tr><td>天气</td><td>${r.temp != null ? `${r.temp}°C，露点 ${r.dew}°C，湿度 ${r.rh}% → 修正 +${r.heat}%` : "无数据"}</td></tr>`;
   h += `<tr><td>静息心率</td><td>${r.rhr ?? "-"}</td></tr><tr><td>耐力保持率</td><td>${r.ret != null ? r.ret + "%" : "-"}</td></tr>`;
   h += `<tr><td>AeI</td><td>${fmtPace(r.aei)}/km</td></tr><tr><td>脱钩</td><td>${r.dec != null ? r.dec + "%" : "-"}</td></tr>`;

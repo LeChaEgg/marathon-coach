@@ -1,0 +1,8 @@
+[project]
+name = "marathon-coach"
+version = "1.0.0"
+description = "AI running coach: syncs Intervals.icu data, computes readiness/fitness reports, and serves a local dashboard. Pure standard library."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = []

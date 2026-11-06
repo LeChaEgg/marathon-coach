@@ -4,7 +4,7 @@ import datetime as dt
 import json
 from pathlib import Path
 
-from .config import REPORTS
+from .config import REPORTS, baseline_label, goal_label, injury_focus, previous_label
 from .metrics import TYPE_GROUP, aei, tanda, time_for_vdot, vdot
 from .reports import WD, Ctx, _baseline, label_type, light, readiness_flags, resting_hr_est, week_summary, zone_minutes
 from .readiness import assess, goal_vdot
@@ -107,7 +107,7 @@ def build(ctx):
         ws += dt.timedelta(days=7)
 
     wellness = []
-    d = max(start, parse_date(ctx.apple_since))
+    d = max(start, parse_date(ctx.baseline_since))
     while d <= t:
         w = ctx.well.get(str(d)) or {}
         if w.get("hrv") or w.get("restingHR"):
@@ -134,7 +134,9 @@ def build(ctx):
         "generated": dt.datetime.now().isoformat(timespec="minutes"),
         "synced": ctx.state.get("last_sync"), "weather_error": ctx.state.get("weather_error"),
         "race": {"name": cfg["race"]["name"], "date": cfg["race"]["date"], "goal_s": goal, "days": (ctx.race - t).days},
-        "need": need, "pbs": pbs, "apple_since": ctx.apple_since,
+        "need": need, "pbs": pbs, "baseline_since": ctx.baseline_since,
+        "labels": {"goal": goal_label(cfg), "baseline": baseline_label(cfg), "previous": previous_label(cfg),
+                   "injury": injury_focus(cfg)},
         "season_start": cfg["race"].get("season_start") or str(ctx.race - dt.timedelta(weeks=23)),
         "location": cfg["location"].get("name"),
         "now": {"dims": dims_now, "marathon_daniels": round(time_for_vdot(comp_now, 42195)) if comp_now else None,
@@ -267,7 +269,10 @@ def write(sync_err=None):
     ctx = Ctx(sync_err)
     data = build(ctx)
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    lb = data["labels"]
     html = (TEMPLATES / "dashboard.html").read_text().replace("/*__DATA__*/null", blob.replace("</", "<\\/"))
+    for k, v in (("{{GOAL}}", lb["goal"]), ("{{BASE}}", lb["baseline"]), ("{{PREV}}", lb["previous"])):
+        html = html.replace(k, v)
     HTML_OUT.parent.mkdir(parents=True, exist_ok=True)
     HTML_OUT.write_text(html)
     out = [HTML_OUT]
