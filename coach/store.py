@@ -49,7 +49,15 @@ def log(msg):
 def activities():
     """dict id -> activity, sorted by start time"""
     acts = _load(F_ACTS, {})
-    return dict(sorted(acts.items(), key=lambda kv: kv[1].get("start_date_local") or ""))
+    out, seen = {}, {}
+    for k, a in sorted(acts.items(), key=lambda kv: kv[1].get("start_date_local") or ""):
+        # 同一次运动被不同来源同步成两条（开始时间差整小时，时区问题）：距离/时长/类型完全相同，只保留最早一条
+        sig = (a.get("type"), a.get("distance"), a.get("moving_time"))
+        if a.get("distance") and sig in seen and (a.get("start_date_local") or "")[:10] in seen[sig]:
+            continue
+        seen.setdefault(sig, set()).add((a.get("start_date_local") or "")[:10])
+        out[k] = a
+    return out
 
 
 def wellness():
