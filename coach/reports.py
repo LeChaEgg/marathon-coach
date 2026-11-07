@@ -401,7 +401,18 @@ def morning(d=None, sync_err=None):
     L.append("## 5. 今日计划\n")
     wp = ctx.week_plan(wk)
     if wp:
-        today_lines = [ln for ln in wp.splitlines() if f"周{WD[d.weekday()]}" in ln or d.strftime("%m-%d") in ln]
+        # 命中今天的条目，连同其后的缩进子条目一起保留；非条目的命中行照旧保留
+        today_lines, keep = [], False
+        for ln in wp.splitlines():
+            hit = not ln.startswith("#") and (f"周{WD[d.weekday()]}" in ln or d.strftime("%m-%d") in ln)
+            if ln.startswith("- "):
+                keep = hit
+            elif ln[:1].isspace() and ln.strip():
+                pass  # 缩进子行：跟随上一个顶层条目
+            else:
+                keep = False
+            if hit or (keep and ln.strip()):
+                today_lines.append(ln)
         L.append("本周计划中今天：" + ("\n" + "\n".join(today_lines) if today_lines else "（未找到今天条目，见 plan/weeks/%s.md）" % wk))
     else:
         L.append(f"- plan/weeks/{wk}.md 不存在（周复盘时生成）")

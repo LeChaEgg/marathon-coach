@@ -177,6 +177,8 @@ def _week_plan(ctx, t):
                 continue
             if s.startswith("阶段"):
                 head = s
+            elif section is None and line[:1].isspace() and s.startswith("- ") and days:
+                days[-1]["extra"].append(s[2:])  # 缩进子条目归属上一个“周X”条目（如长距离的结构/补给）
             elif section is None and s.startswith("- 周"):
                 body = s[2:]
                 if days and "：" in body and body.split("：", 1)[0].endswith("实际"):
