@@ -114,6 +114,19 @@ def build(ctx):
             wellness.append({"d": str(d), "hrv": w.get("hrv"), "rhr": w.get("restingHR")})
         d += dt.timedelta(days=1)
 
+    # Intervals.icu eFTP (running power): reference only, not used in any score
+    eftp = {}
+    for a in ctx.acts.values():
+        if a.get("type") not in ("Run", "VirtualRun") or not a.get("icu_rolling_ftp"):
+            continue
+        d = (a.get("start_date_local") or "")[:10]
+        if not d or parse_date(d) < start:
+            continue
+        e = eftp.setdefault(d, {"d": d, "v": 0, "delta": 0, "name": None, "id": None})
+        e["v"] = max(e["v"], a["icu_rolling_ftp"])
+        if (a.get("icu_rolling_ftp_delta") or 0) > e["delta"]:
+            e["delta"], e["name"], e["id"] = a["icu_rolling_ftp_delta"], a.get("name"), a.get("id")
+
     now = rolling_state(runs, t, cfg)
     prev = rolling_state(runs, t - dt.timedelta(days=28), cfg)
     goal = cfg["race"]["goal_s"]
@@ -142,7 +155,7 @@ def build(ctx):
         "now": {"dims": dims_now, "marathon_daniels": round(time_for_vdot(comp_now, 42195)) if comp_now else None,
                 "marathon_tanda": round(tanda(K, tot_mt / tot_d * 1000)) if tot_d else None, "k8": _r(K)},
         "runs": [_run_rec(m, slope, ref_hr, pain_by_act) for m in runs if parse_date(m["date"]) >= start],
-        "daily": daily, "weeks": weeks, "wellness": wellness, "readiness": _readiness(assess(ctx, t)),
+        "daily": daily, "weeks": weeks, "wellness": wellness, "eftp": sorted(eftp.values(), key=lambda e: e["d"]), "readiness": _readiness(assess(ctx, t)),
     }
 
 
@@ -177,6 +190,8 @@ def _week_plan(ctx, t):
                 continue
             if s.startswith("阶段"):
                 head = s
+            elif section is None and line[:1].isspace() and s.startswith("- ") and days:
+                days[-1]["extra"].append(s[2:])  # 缩进子条目归属上一个“周X”条目（如长距离的结构/补给）
             elif section is None and s.startswith("- 周"):
                 body = s[2:]
                 if days and "：" in body and body.split("：", 1)[0].endswith("实际"):

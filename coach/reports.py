@@ -401,7 +401,18 @@ def morning(d=None, sync_err=None):
     L.append("## 5. 今日计划\n")
     wp = ctx.week_plan(wk)
     if wp:
-        today_lines = [ln for ln in wp.splitlines() if f"周{WD[d.weekday()]}" in ln or d.strftime("%m-%d") in ln]
+        # 命中今天的条目，连同其后的缩进子条目一起保留；非条目的命中行照旧保留
+        today_lines, keep = [], False
+        for ln in wp.splitlines():
+            hit = not ln.startswith("#") and (f"周{WD[d.weekday()]}" in ln or d.strftime("%m-%d") in ln)
+            if ln.startswith("- "):
+                keep = hit
+            elif ln[:1].isspace() and ln.strip():
+                pass  # 缩进子行：跟随上一个顶层条目
+            else:
+                keep = False
+            if hit or (keep and ln.strip()):
+                today_lines.append(ln)
         L.append("本周计划中今天：" + ("\n" + "\n".join(today_lines) if today_lines else "（未找到今天条目，见 plan/weeks/%s.md）" % wk))
     else:
         L.append(f"- plan/weeks/{wk}.md 不存在（周复盘时生成）")
@@ -560,8 +571,25 @@ def _no_evidence_reason(k, m, ctx):
     if k == "endurance":
         if (m.get("mt") or 0) < 3600:
             return f"移动 {(m.get('mt') or 0) / 60:.0f} 分钟，<60 分钟"
+        if m.get("type") in ("interval", "threshold", "tempo"):
+            return "间歇/阈值/节奏课含热身、组间恢复和放松跑，后 1/3 不能代表耐力（长距离带质量段的 long_quality 仍计分）"
         return "间歇课或前后 1/3 稳态片段不足"
     return "稳态片段不足 5 个（热身 8 分钟、间歇及其后恢复、HR 区间外都会被剔除）"
+
+
+def _within_session_note(sc, k, sd):
+    """同一节课内各快段分数差距大时提醒：单次分数取决于配速分配，不稳定（目前只有速度维度有逐段分数）。"""
+    if k != "speed":
+        return ""
+    vs = [x["v"] for x in (((sc.get("dims") or {}).get("speed") or {}).get("segs") or []) if x.get("v") is not None]
+    if len(vs) < 3:
+        return ""
+    spread = max(vs) - min(vs)
+    if spread < sd:
+        return ""
+    tail = vs[len(vs) // 2:]
+    return (f"；本课各快段分数差 {spread:.1f}（{max(vs):.1f} → {min(vs):.1f}），后 {len(tail)} 段均值 {sum(tail) / len(tail):.1f}："
+            "单次分数受配速分配影响，不单独当作能力变化")
 
 
 def contribution_section(ctx, m):
@@ -598,18 +626,21 @@ def contribution_section(ctx, m):
         else:
             diff = val - b["v"]
             z = diff / sd
+            up = diff > 0
             if abs(z) < 1:
-                verdict, why = "→ 在噪声内", f"与此前状态差 {diff:+.1f}，小于该子项单次波动 ±{sd:.1f}：单次看不出提升或下降，看右侧“本周累计”"
+                verdict = "→ 持平（在单次波动内）"
+                why = (f"{'高于' if up else '低于'}此前状态 {diff:+.1f}，约 {abs(z):.1f} 倍单次波动 ±{sd:.1f}：方向{'为正' if up else '为负'}，"
+                       "但单次分不出真变化和误差，看右侧“本周累计”和近 4 周")
             else:
-                up = z > 0
                 tag = "明显" if abs(z) >= 2 else "弱信号"
                 verdict = f"{'↑' if up else '↓'} {tag}"
-                why = f"{'高于' if up else '低于'}此前状态 {diff:+.1f}（单次波动 ±{sd:.1f}）；" + (
-                    "需下次同类课再确认" if up else "先查天气、睡眠、前一天负荷，再看是否连续")
+                why = (f"{'高于' if up else '低于'}此前状态 {diff:+.1f}，约 {abs(z):.1f} 倍单次波动 ±{sd:.1f}；" + (
+                    "需下次同类课再确认" if up else "先查天气、睡眠、前一天负荷，再看是否连续"))
+            why += _within_session_note(sc, k, sd)
         delta = a["v"] - b["v"] if a and b else None
         rows.append([DIM_LABEL[k], f"{val:.1f}", ref, signed(delta, 2) if delta is not None else "-", wk, f"**{verdict}**", why])
     L = ["**本次对各能力子项的贡献**（单次值 vs 此前状态跑力；“本次状态变化”= 加入本次后状态动了多少；"
-         "“本周累计”= 本周一前一天 → 现在的状态变化 ± 标准误）\n"]
+         "“本周累计”= 本周一前一天 → 现在的状态变化 ± 标准误；“看不出变化”= 证据不足以区分真变化和误差，不等于没变化）\n"]
     L.append(md_table(["子项", "本次", "此前状态", "本次状态变化", "本周累计", "判断", "说明"], rows))
     notes = []
     for k in missing:
@@ -911,7 +942,7 @@ def week_change_lines(ctx, wk):
         return []
     return ["\n**能力变化（状态跑力，± 为标准误；|变化| < 1 个标准误 = 看不出，1–2 = 倾向，≥2 = 明确）**\n",
             md_table(["子项", "本周初 → 周末", "本周变化", "本周新证据(次)", "近 4 周变化", "单次波动"], rows),
-            "\n单次跑力波动 ±1.5–2.5 分，周状态由多次加权，真实的周进步常 <1 分，所以多数周只能写“看不出变化”，近 4 周比单周更可信。\n"]
+            "\n“看不出变化”= 本周的新证据太少，分不清是真变化还是测量误差，不等于没变化。单次跑力波动 ±1.5–2.5 分，一周只有 1–2 次新证据时要变化 ≥2 倍标准误才算“明确”，而真实的周进步常 <1 分，所以多数周只能写“看不出变化”；以近 4 周为主、本周为辅。\n"]
 
 
 def readiness_lines(ctx, d):
