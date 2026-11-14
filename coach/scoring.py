@@ -15,6 +15,7 @@ from .metrics import _ffill, _rolling, vdot
 from .util import mean, median, parse_date, stdev
 
 DIMS = ("aerobic", "threshold", "speed")
+ENDURANCE_EXCLUDED_TYPES = ("interval", "threshold", "tempo")
 DIM_LABEL = {"aerobic": "有氧", "threshold": "阈值", "speed": "速度", "endurance": "耐力", "composite": "综合"}
 MIN_HRR = 0.40
 W_CAP = 20.0  # cap per-run evidence weight in rolling state
@@ -218,9 +219,12 @@ def score_run(S, m, cfg, rhr, rhr_src, wx):
     if thr and all(b.get("rep") for b in thr["blocks"]):
         thr["w"] *= THR_REP_DISCOUNT
 
-    # endurance (not part of composite)
+    # endurance (not part of composite): only unstructured runs. Interval / threshold / tempo sessions have a warm-up,
+    # recoveries and a cool-down inside the last third, which would read as fatigue (long runs with a quality
+    # segment, type long_quality, still count)
     total = S.mt_cum[-1] if S.n else 0
-    if total >= 3600 and not interval_like:
+    structured = interval_like or m.get("type") in ENDURANCE_EXCLUDED_TYPES
+    if total >= 3600 and not structured:
         w0 = 300
         t1, t2 = w0 + (total - w0) / 3, w0 + (total - w0) * 2 / 3
         wide = [(t, vo2_est(v * f, h, rhr, hrmax)) for t, h, v in wide_bins if 120 <= h <= 180]

@@ -3,7 +3,7 @@ import math
 
 from .util import linreg, mean, median, stdev
 
-METRICS_VERSION = 8
+METRICS_VERSION = 9
 
 RUN_TYPES = {"Run", "VirtualRun", "TrailRun"}
 QUALITY_TYPES = {"interval", "threshold", "tempo", "long_quality", "race"}
