@@ -585,6 +585,7 @@ pages.ability = async () => {
     <section class="card"><h2>最长一次（km）</h2><div class="chart" id="c-long"></div></section>
     <section class="card"><h2>轻松跑触地时间（ms）</h2><div class="chart" id="c-gct"></div></section>
     <section class="card"><h2>轻松跑步频（spm）</h2><div class="chart" id="c-cad"></div></section>
+    <section class="card"><h2>eFTP（跑步功率，仅供参考）</h2>${legend([{ name: S.labels.baseline, color: "--s1", line: 1 }, { name: S.labels.previous, color: "--neutral", line: 1 }])}<div class="chart" id="c-eftp"></div><p class="cap">Intervals.icu 根据跑步功率估算的 eFTP（W），实心点 = 该次跑步刷新了 eFTP。<b>不进任何评分</b>：它只反映“有没有跑出新的最大功率”，无天气/坡度修正，跑步机与手表功率算法也会影响读数；${S.labels.previous}→${S.labels.baseline}（${S.baseline_since}）功率口径不同（轻松跑约 250 W → 175 W），两条线之间不能比较，${S.labels.baseline}那段的缓慢下滑只是旧高值在衰减。</p></section>
     <section class="card"><h2>HRV（ms）</h2><div class="chart" id="c-hrv"></div></section>
     <section class="card"><h2>静息心率（bpm）</h2><div class="chart" id="c-rhr"></div></section>
   </div>`;
@@ -613,6 +614,13 @@ pages.ability = async () => {
     ] });
     chart($("#c-long"), { ...wopt, yMin: 0, fmt: (v) => v, series: [{ name: "最长一次", color: "--s5", type: "bar", pts: Wk.filter((w) => w.long > 0).map((w) => ({ x: w.x, y: w.long })), fmt: (p) => p.y + " km" }] });
     line("#c-gct", "gct", "--s2", (p) => p.y + " ms"); line("#c-cad", "cad", "--s4", (p) => p.y + " spm");
+    const ef = S.eftp || [], efOld = ef.filter((e) => e.d < S.baseline_since), efNew = ef.filter((e) => e.d >= S.baseline_since);
+    const efDot = (arr, color) => ({ name: "刷新", color, type: "dot", r: 5, click: (p) => p.run.id && (location.hash = "#/run/" + p.run.id), pts: arr.filter((e) => e.delta > 0).map((e) => ({ x: T(e.d), y: e.v, run: e })) });
+    chart($("#c-eftp"), { x, height: 170, fmt: (v) => v, vlines: [{ x: T(S.baseline_since), label: S.labels.baseline }], dotTip: (p) => `<b>${p.run.d} ${esc(p.run.name || "")}</b><br>eFTP +${p.run.delta} W 至 ${p.run.v} W`, series: [
+      { name: S.labels.previous, color: "--neutral", type: "line", w: 1.8, gap: 90, pts: efOld.map((e) => ({ x: T(e.d), y: e.v })), fmt: (p) => p.y + " W" },
+      { name: S.labels.baseline, color: "--s1", type: "line", w: 1.8, gap: 90, pts: efNew.map((e) => ({ x: T(e.d), y: e.v })), fmt: (p) => p.y + " W" },
+      efDot(efOld, "--neutral"), efDot(efNew, "--s1"),
+    ] });
     const well = (id, key, color, unit) => chart($(id), { x, height: 170, fmt: (v) => v, series: [{ name: "每日", color, type: "line", w: 1.6, gap: 3, pts: S.wellness.filter((w) => w[key]).map((w) => ({ x: T(w.d), y: w[key] })), fmt: (p) => p.y + unit }] });
     well("#c-hrv", "hrv", "--s3", " ms"); well("#c-rhr", "rhr", "--s2", " bpm");
   };
