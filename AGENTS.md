@@ -24,7 +24,7 @@
 - `python3 -m coach sync [--full] [--rebuild]`：只同步；`--rebuild` 在修改指标算法后重算
 - `python3 -m coach serve [--port 8787] [--open]`：训练中心，本地网页（纯标准库，默认只监听 127.0.0.1；`--host 0.0.0.0` 可让局域网手机访问）。分今日 / 本周 / 跑步 / 赛季 / 能力五页，实时读取本地缓存、`reports/`、`plan/` 和 `journal/`：**写完 `## 教练结论` 或周计划后页面几秒内自动刷新，不需要再跑任何命令**。页面上的按钮直接调用脚本：同步、生成晨报/跑后/周复盘的数据报告、提交主观反馈（等同 `coach log`，会追加 `journal/feedback.jsonl`）、调整激进程度（改 `athlete.toml`）。教练结论仍由你在对话里写入报告文件。用户说“打开训练中心”时启动它（用户自己的终端里可能已经在跑）。
 - `python3 -m coach dash`：只生成静态版 `reports/dashboard.html`（离线能力看板；`today`/`run`/`week`/`log` 之后自动更新）
-- `python3 -m coach push-plan [周] [--apply]`：把 `plan/weeks/<周>.workouts.toml` 的跑步课表上传到 Intervals.icu 日历（用户在手机 App 里再同步到 Apple Watch）。默认只预览；`--apply` 是写线上，须先给用户看预览并得到明确同意。只增删改 `external_id` 以 `coach-` 开头的事件。
+- `python3 -m coach push-plan [周] [--apply]`：把 `plan/weeks/<周>.workouts.toml` 的跑步课表上传到 Intervals.icu 日历（用户在手机 App 里再同步到 Apple Watch）。默认只预览；`--apply` 写线上：新一周计划生成后直接上传（用户已授权），之后的修改须先和用户讨论确认再更新。只增删改 `external_id` 以 `coach-` 开头的事件。
 - 任何报告命令加 `--offline`：不联网，只用本地缓存
 
 每个流程的结论都要追加到对应报告文件末尾的 `## 教练结论` 一节（`reports/daily|runs|weekly/`，脚本重跑时这一节会保留），下周计划写入 `plan/weeks/YYYY-Www.md`。
@@ -56,7 +56,7 @@
 ## 写入边界
 
 - 默认只读，不修改 Intervals.icu。
-- 更新 wellness、日历或其他线上数据前，必须得到用户对这一次写入的明确授权，并先确认目标日期、字段和值。Wellness 更新用 PUT；读取成功不代表获得了写入授权。唯一的脚本化写入是 `coach push-plan --apply`（日历 WORKOUT 事件），同样每次先预览、经用户同意。
+- 更新 wellness、日历或其他线上数据前，必须得到用户对这一次写入的明确授权，并先确认目标日期、字段和值。Wellness 更新用 PUT；读取成功不代表获得了写入授权。唯一的脚本化写入是 `coach push-plan --apply`（日历 WORKOUT 事件），用户已长期授权：**生成下一周计划后直接上传**（先预览再 `--apply`，把结果告诉用户）；此后用户提出任何修改意见，先讨论并经用户确认，再改 toml 并重新上传，不得先改后报。
 - 本地 `data/` 是可随时重建的缓存（`sync --full`）；`journal/feedback.jsonl` 是用户主观反馈的唯一记录，只追加，不改写。
 
 ## 固定反馈格式
