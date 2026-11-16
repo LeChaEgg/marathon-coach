@@ -1,0 +1,65 @@
+# 与 2026-W47.md 对应的结构化课表，由 `python3 -m coach push-plan` 推到 Intervals.icu。
+# 只写要上手表的跑步；休息日、力量不写。心率目标用 bpm（脚本按 LTHR 换算）。
+week = "2026-W47"
+
+[[workout]]
+date = "2026-11-17"
+name = "W47 周二 轻松跑 10 km"
+steps = """
+- 10km ≤142bpm
+"""
+
+[[workout]]
+date = "2026-11-18"
+name = "W47 周三 阈值 3×3 km"
+steps = """
+Warmup
+- 2.5km ≤147bpm
+Strides 4x
+- 20s 160-175bpm
+- 40s ≤140bpm
+Threshold 3x
+- 3km 164-171bpm
+- 2m ≤140bpm
+Cooldown
+- 2km ≤140bpm
+"""
+
+[[workout]]
+date = "2026-11-19"
+name = "W47 周四 恢复跑 8 km"
+steps = """
+- 8km ≤140bpm
+"""
+
+[[workout]]
+date = "2026-11-20"
+name = "W47 周五 有氧稳态 14 km"
+steps = """
+Warmup
+- 3km ≤145bpm
+Steady
+- 8km 150-155bpm
+Cooldown
+- 3km ≤140bpm
+Strides 6x
+- 20s 160-175bpm
+- 40s ≤140bpm
+"""
+
+[[workout]]
+date = "2026-11-21"
+name = "W47 周六 轻松跑 7 km"
+steps = """
+- 7km ≤135bpm
+"""
+
+[[workout]]
+date = "2026-11-22"
+name = "W47 周日 长距离 30 km（末 6 km 马配）"
+steps = """
+Easy
+- 24km 140-148bpm
+Marathon pace
+- 6km 158-165bpm
+"""

@@ -21,19 +21,28 @@ class Intervals:
         self._auth = "Basic " + base64.b64encode(f"API_KEY:{token}".encode()).decode()
 
     def get(self, path, params=None, retries=3):
+        return self._request("GET", path, params, None, retries)
+
+    def _request(self, method, path, params=None, body=None, retries=3):
         url = BASE + path.replace("{aid}", self.athlete_id)
         if params:
             url += "?" + urllib.parse.urlencode(params)
-        req = urllib.request.Request(url, headers={
+        headers = {
             "Authorization": self._auth,
             "User-Agent": "tokyo-marathon-coach/1.0",
             "Accept": "application/json",
-        })
+        }
+        data = None
+        if body is not None:
+            data = json.dumps(body).encode()
+            headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
         last = None
         for attempt in range(retries):
             try:
                 with urllib.request.urlopen(req, timeout=60) as r:
-                    return json.loads(r.read())
+                    raw = r.read()
+                    return json.loads(raw) if raw else None
             except urllib.error.HTTPError as e:
                 if e.code in (401, 403):
                     raise ApiError(
@@ -69,3 +78,13 @@ class Intervals:
 
     def events(self, oldest, newest):
         return self.get("/api/v1/athlete/{aid}/events", {"oldest": str(oldest), "newest": str(newest)})
+
+    # ---- 写入（仅 coach push-plan 使用，需要用户授权后才加 --apply）
+    def create_event(self, body):
+        return self._request("POST", "/api/v1/athlete/{aid}/events", None, body, retries=1)
+
+    def update_event(self, event_id, body):
+        return self._request("PUT", f"/api/v1/athlete/{{aid}}/events/{event_id}", None, body, retries=1)
+
+    def delete_event(self, event_id):
+        return self._request("DELETE", f"/api/v1/athlete/{{aid}}/events/{event_id}", None, None, retries=1)

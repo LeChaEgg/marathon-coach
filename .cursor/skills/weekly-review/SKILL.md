@@ -19,6 +19,7 @@ description: 每周复盘：汇总本周跑量、强度分布、恢复、主观�
 3. 本周 journal 没有疼痛/疲劳记录时，在输出里请用户补充。用户已经给了的，用 `python3 -m coach log` 记下来。
 4. 写复盘（格式见下）。
 5. 把下周计划写入 `plan/weeks/<下周>.md`（格式见下）。每天一行，以 `周X MM-DD：` 开头，晨报靠这个格式找到当天的条目。
+5b. 同时写结构化课表 `plan/weeks/<下周>.workouts.toml`（格式见 `coach/push.py` 文件头，范例 `2026-W47.workouts.toml`）：只写要上手表的跑步，一天一条，`steps` 用 Intervals.icu workout builder 语法、只用心率目标（`130-142bpm` / `≤142bpm`）。内容必须和 `.md` 里同一天的安排完全一致（心率、距离、组数）。写完先预览：`python3 -m coach push-plan <下周>`（需要 `full_network`）。**上传到 Intervals.icu 是写线上，必须在对话里把预览结果给用户看，得到明确同意后才加 `--apply`**；之后用户在手机 Intervals 客户端手动同步到 Apple Watch。计划中途改了某天的安排，要同步改 toml 并重新预览/上传（幂等，只更新有变化的）。
 6. 如果实际进度和赛季计划偏离较大（受伤、生病、明显超前/落后），修改 `plan/season_plan.md` 中后续几周的行，并在文件末尾加一条“修订记录”。
 7. 把复盘结论追加到 `reports/weekly/<本周>.md` 的 `## 教练结论`。
 8. 计划和结论写入文件后，训练中心网页（`python3 -m coach serve`）的「本周」「赛季」页会自动显示，不需要再运行任何命令。

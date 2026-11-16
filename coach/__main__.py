@@ -8,6 +8,7 @@ python3 -m coach serve [--port 8787] [--open]   训练中心（本地网页，�
 python3 -m coach dash             静态看板 reports/dashboard.html（today/run/week/log 后自动更新）
 python3 -m coach log ...          记录主观反馈（RPE、疼痛等）
 python3 -m coach sync [--full] [--rebuild]
+python3 -m coach push-plan [周] [--apply]   把周计划推到 Intervals.icu 日历（默认只预览），再在手机 App 里同步到手表
 所有报告命令加 --offline 可跳过同步，只用本地缓存。
 """
 import argparse
@@ -96,6 +97,11 @@ def main():
     sv.add_argument("--host", default="127.0.0.1", help="0.0.0.0 可让同一局域网的手机访问")
     sv.add_argument("--open", action="store_true", help="启动后打开浏览器")
 
+    pp = sub.add_parser("push-plan", help="把周计划（plan/weeks/<周>.workouts.toml）推到 Intervals.icu 日历，默认只预览")
+    pp.add_argument("week", nargs="?", help="2026-W47 或该周任意日期；默认最新一份")
+    pp.add_argument("--apply", action="store_true", help="真的写线上（需用户授权）")
+    pp.add_argument("--keep-stale", action="store_true", help="不删除线上已有、但文件里已去掉的教练事件")
+
     lg = sub.add_parser("log", help="记录主观反馈")
     lg.add_argument("--date", default=str(dt.date.today()))
     lg.add_argument("--activity", help="活动ID；跑后反馈必填，不填则为当天整体反馈")
@@ -117,6 +123,10 @@ def main():
     if args.cmd == "serve":
         from . import server
         server.serve(args.host, args.port, args.open)
+        return
+    if args.cmd == "push-plan":
+        from . import push
+        push.push(args.week, apply=args.apply, prune=not args.keep_stale)
         return
     if args.cmd == "sync":
         from .api import ApiError
