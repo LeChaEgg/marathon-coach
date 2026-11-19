@@ -54,6 +54,8 @@ section.panel { margin-bottom: 22px; }
 #tip { position: fixed; pointer-events: none; background: var(--panel); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 9px; font-size: 12px; display: none; z-index: 10; white-space: normal; max-width: calc(100vw - 16px); font-variant-numeric: tabular-nums; }
 #tip b { font-weight: 600; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 24px; }
+.layout > *, .grid2 > *, .kpis > * { min-width: 0; }
+html, body { overflow-x: hidden; }
 #detail { background: var(--panel); border-radius: 8px; padding: 14px 16px; align-self: start; position: sticky; top: 12px; font-size: 13px; }
 #detail .close { display: none; }
 #dim { display: none; }
@@ -72,7 +74,7 @@ table.runs tr.sel td { background: var(--panel); font-weight: 600; }
 .foot a { color: var(--muted); }
 @media (min-width: 1500px) { main { max-width: 1440px; } .grid2 { grid-template-columns: 1fr 1fr 1fr; } }
 @media (max-width: 1000px) {
-  .kpis { grid-template-columns: repeat(3, 1fr); } .grid2, .layout { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grid2, .layout { grid-template-columns: minmax(0, 1fr); }
   .kpi.main { grid-column: 1 / -1; }
   /* 明细改成底部抽屉：点图上的点/表格行弹出 */
   #detail { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 20; max-height: 72vh; overflow: auto; border-radius: 14px 14px 0 0;
@@ -86,7 +88,7 @@ table.runs tr.sel td { background: var(--panel); font-weight: 600; }
 @media (max-width: 600px) {
   main { padding-top: 16px; padding-bottom: 40px; }
   h1 { font-size: 19px; }
-  .kpis { grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
   .kpi:last-child { grid-column: 1 / -1; }
   .kpi { padding: 10px 11px; } .kpi .v { font-size: 20px; } .kpi.main .v { font-size: 30px; }
   .controls { gap: 8px 12px; }
