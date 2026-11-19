@@ -4,6 +4,7 @@ week = "2026-W47"
 
 [[workout]]
 date = "2026-11-17"
+load = 38   # 轻松/恢复日：≈3.8×km，保证自动配对
 name = "W47 周二 轻松跑 10 km"
 steps = """
 - 10km ≤142bpm
@@ -27,6 +28,7 @@ Cooldown
 
 [[workout]]
 date = "2026-11-19"
+load = 30   # 轻松/恢复日：≈3.8×km，保证自动配对
 name = "W47 周四 恢复跑 8 km"
 steps = """
 - 8km ≤140bpm
@@ -49,6 +51,7 @@ Strides 6x
 
 [[workout]]
 date = "2026-11-21"
+load = 27   # 轻松/恢复日：≈3.8×km，保证自动配对
 name = "W47 周六 轻松跑 7 km"
 steps = """
 - 7km ≤135bpm

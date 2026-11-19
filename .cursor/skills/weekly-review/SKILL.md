@@ -19,7 +19,7 @@ description: 每周复盘：汇总本周跑量、强度分布、恢复、主观�
 3. 本周 journal 没有疼痛/疲劳记录时，在输出里请用户补充。用户已经给了的，用 `python3 -m coach log` 记下来。
 4. 写复盘（格式见下）。
 5. 把下周计划写入 `plan/weeks/<下周>.md`（格式见下）。每天一行，以 `周X MM-DD：` 开头，晨报靠这个格式找到当天的条目。
-5b. 同时写结构化课表 `plan/weeks/<下周>.workouts.toml`（格式见 `coach/push.py` 文件头，范例 `2026-W47.workouts.toml`）：只写要上手表的跑步，一天一条，`steps` 用 Intervals.icu workout builder 语法、只用心率目标（`130-142bpm` / `≤142bpm`）。内容必须和 `.md` 里同一天的安排完全一致（心率、距离、组数）。写完先预览：`python3 -m coach push-plan <下周>`（需要 `full_network`）。**用户已授权：新一周计划写完后直接 `python3 -m coach push-plan <下周> --apply` 上传到 Intervals.icu**，并在回复里说明上传了哪几天；用户随后在手机 Intervals 客户端手动同步到 Apple Watch。**之后用户提出任何修改意见（包括中途改某天安排），先讨论并得到确认，再同步改 `.md` 和 toml、重新上传**（幂等，只更新有变化的），不要先改线上再汇报。
+5b. 同时写结构化课表 `plan/weeks/<下周>.workouts.toml`（格式见 `coach/push.py` 文件头，范例 `2026-W47.workouts.toml`）：只写要上手表的跑步，一天一条，`steps` 用 Intervals.icu workout builder 语法、只用心率目标（`130-142bpm` / `≤142bpm`）。内容必须和 `.md` 里同一天的安排完全一致（心率、距离、组数）。**轻松/恢复日必须写 `load = round(3.8 × 公里数)`**：Intervals 只有在实际负荷与计划负荷相差 50% 以内才会把跑步自动配对到课表（才有“遵守计划”），心率区间写得宽会让它低估轻松跑的负荷（11-17、11-19 就是因此没配上）；阈值/稳态/长距离不写，Intervals 自己算得准。写完先预览：`python3 -m coach push-plan <下周>`（需要 `full_network`）。**用户已授权：新一周计划写完后直接 `python3 -m coach push-plan <下周> --apply` 上传到 Intervals.icu**，并在回复里说明上传了哪几天；用户随后在手机 Intervals 客户端手动同步到 Apple Watch。**之后用户提出任何修改意见（包括中途改某天安排），先讨论并得到确认，再同步改 `.md` 和 toml、重新上传**（幂等，只更新有变化的），不要先改线上再汇报。
 6. 如果实际进度和赛季计划偏离较大（受伤、生病、明显超前/落后），修改 `plan/season_plan.md` 中后续几周的行，并在文件末尾加一条“修订记录”。
 7. 把复盘结论追加到 `reports/weekly/<本周>.md` 的 `## 教练结论`。
 8. 计划和结论写入文件后，训练中心网页（`python3 -m coach serve`）的「本周」「赛季」页会自动显示，不需要再运行任何命令。

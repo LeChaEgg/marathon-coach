@@ -12,6 +12,9 @@
     steps = '''
     - 10km 130-142bpm
     '''
+可选 load = N：计划训练负荷。Intervals 只有在「实际负荷与计划负荷相差 50% 以内」时才会把跑步自动配对到课表
+（遵守计划/compliance 才有值）。心率区间写得宽（如 ≤142bpm）会让它低估轻松跑的负荷，轻松/恢复日必须写 load，
+经验值 ≈ 3.8 × 公里数（11-17 轻松 10.6 km=41，11-19 恢复 8.3 km=31）；阈值/稳态/长距离不写，Intervals 自己算得准（周三 77 vs 实际 85）。
 steps 是 Intervals.icu 的 workout builder 语法，只用心率目标（同一个训练里不能混用心率和配速）；
 `130-142bpm` / `≤142bpm` 由脚本按 athlete.toml 的 LTHR 换成 `x-y% LTHR`。
 """
@@ -93,14 +96,17 @@ def load_week(label, cfg):
             desc = hr_to_lthr("\n".join(blocks), lthr)
         except ValueError as e:
             raise SystemExit(f"{path.name}：{d}：{e}")
-        out.append({
+        body = {
             "category": "WORKOUT",
             "type": w.get("type", "Run"),
             "start_date_local": f"{d}T00:00:00",
             "name": name,
             "description": desc,
             "external_id": f"{PREFIX}{d}",
-        })
+        }
+        if w.get("load") is not None:
+            body["icu_training_load"] = int(w["load"])
+        out.append(body)
     return out, (mon, sun)
 
 
@@ -129,7 +135,8 @@ def push(arg=None, apply=False, prune=True):
             continue
         if old is None:
             todo.append(("新建", w, None))
-        elif (old.get("name"), (old.get("description") or "").strip()) != (w["name"], w["description"]):
+        elif ((old.get("name"), (old.get("description") or "").strip(), old.get("icu_training_load") if "icu_training_load" in w else None)
+              != (w["name"], w["description"], w.get("icu_training_load"))):
             todo.append(("更新", w, old["id"]))
         else:
             print(f"  = {day} {w['name']}（线上已是最新）")
@@ -158,6 +165,15 @@ def push(arg=None, apply=False, prune=True):
                 continue
         except ApiError as e:
             raise SystemExit(f"写入失败（{act} {w['start_date_local'][:10]}）：{e}")
+        # 步骤变了 Intervals 会重算负荷，把同一次请求里设的 load 覆盖掉；不一致就单独再设一次
+        want_load = w.get("icu_training_load")
+        if want_load is not None and r and r.get("icu_training_load") != want_load:
+            try:
+                r = api.update_event(r["id"], {"icu_training_load": want_load})
+            except ApiError as e:
+                raise SystemExit(f"设置计划负荷失败（{w['start_date_local'][:10]}）：{e}")
+            if r.get("icu_training_load") != want_load:
+                print(f"  ⚠ {w['start_date_local'][:10]} 计划负荷没设上（线上 {r.get('icu_training_load')}，要 {want_load}）")
         steps = len((r or {}).get("workout_doc", {}).get("steps") or [])
         extra = f"，解析出 {steps} 个步骤" if r else ""
         if r and not steps:
