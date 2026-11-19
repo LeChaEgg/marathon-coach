@@ -21,7 +21,7 @@
   :root {
     --bg: #17191c; --panel: #1f2226; --text: #e3e6ea; --muted: #99a1ab; --faint: #5d646d; --grid: #2d3137;
     --accent: #6d9cf0; --aerobic: #4fbf8c; --threshold: #e0a153; --speed: #e06a7e; --endurance: #a58ae6;
-    --bar: #56709a; --bar2: #384559; --warn: #e06a7e;
+    --bar: #56709a; --bar2: #4d5f7c; --warn: #e06a7e;
   }
 }
 * { box-sizing: border-box; }
@@ -96,8 +96,9 @@ table.runs tr.sel td { background: var(--panel); font-weight: 600; }
   .toggles label { display: inline-block; padding: 6px 0; margin-right: 12px; font-size: 14px; }
   .grid2 { gap: 18px; }
   .chart text { font-size: 10px; }
-  table.runs th, table.runs td { padding: 7px 5px; font-size: 12px; white-space: nowrap; }
-  table.runs th:nth-child(n+11), table.runs td:nth-child(n+11) { display: none; }
+  table.runs th, table.runs td { padding: 7px 3px; font-size: 12px; white-space: nowrap; }
+  table.runs th:nth-child(5), table.runs td:nth-child(5), table.runs th:nth-child(n+10), table.runs td:nth-child(n+10) { display: none; }
+  table.runs .tm { display: none; }
   .tablewrap { max-height: 360px; }
 }
 </style>
@@ -355,7 +356,7 @@ function renderCharts() {
 function renderTable() {
   const rows = DATA.runs.filter((r) => r.km >= 3).slice(-60).reverse();
   let h = "<tr><th>日期</th><th>类型</th><th>km</th><th>配速</th><th>HR</th><th>综合</th><th>有氧</th><th>阈值</th><th>速度</th><th>耐力</th><th>置信</th><th>气温</th></tr>";
-  rows.forEach((r) => { h += `<tr data-id="${r.id}" class="${r.id === state.sel ? "sel" : ""}"><td>${r.d.slice(5)} ${r.t}</td><td>${esc(r.label)}</td><td>${r.km}</td><td>${fmtPace(r.pace)}</td><td>${r.hr ?? "-"}</td><td><b>${f1(r.comp)}</b></td><td>${f1(r.A)}</td><td>${f1(r.T)}</td><td>${f1(r.S)}</td><td>${f1(r.E)}</td><td>${r.conf || "-"}</td><td>${r.temp ?? "-"}</td></tr>`; });
+  rows.forEach((r) => { h += `<tr data-id="${r.id}" class="${r.id === state.sel ? "sel" : ""}"><td>${r.d.slice(5)}<span class="tm"> ${r.t}</span></td><td>${esc(r.label)}</td><td>${r.km}</td><td>${fmtPace(r.pace)}</td><td>${r.hr ?? "-"}</td><td><b>${f1(r.comp)}</b></td><td>${f1(r.A)}</td><td>${f1(r.T)}</td><td>${f1(r.S)}</td><td>${f1(r.E)}</td><td>${r.conf || "-"}</td><td>${r.temp ?? "-"}</td></tr>`; });
   $("#runs").innerHTML = h;
   $("#runs").querySelectorAll("tr[data-id]").forEach((tr) => (tr.onclick = () => selectRun({ run: runById[tr.dataset.id] })));
 }
