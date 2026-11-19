@@ -87,6 +87,7 @@ python3 -m coach week [YYYY-MM-DD]     # 周复盘
 python3 -m coach runs --days 60 --group long
 python3 -m coach serve --open          # 训练中心（本地网页）
 python3 -m coach dash                  # 静态看板 reports/dashboard.html
+python3 -m coach publish               # 发布到 GitHub Pages（gh-pages 分支；Settings → Pages 选 gh-pages / root）
 python3 -m coach log --activity i123 --rpe 6 --pain 1 --pain-loc 左小腿内侧 --note "..."
 python3 -m coach sync [--full] [--rebuild]
 ```

@@ -23,6 +23,7 @@
 - `python3 -m coach log --activity <ID> --rpe 6 --pain 1 --pain-loc ... --note ...`：记录主观反馈 / 修正跑步类型（`--type`）
 - `python3 -m coach sync [--full] [--rebuild]`：只同步；`--rebuild` 在修改指标算法后重算
 - `python3 -m coach serve [--port 8787] [--open]`：训练中心，本地网页（纯标准库，默认只监听 127.0.0.1；`--host 0.0.0.0` 可让局域网手机访问）。分今日 / 本周 / 跑步 / 赛季 / 能力五页，实时读取本地缓存、`reports/`、`plan/` 和 `journal/`：**写完 `## 教练结论` 或周计划后页面几秒内自动刷新，不需要再跑任何命令**。页面上的按钮直接调用脚本：同步、生成晨报/跑后/周复盘的数据报告、提交主观反馈（等同 `coach log`，会追加 `journal/feedback.jsonl`）、调整激进程度（改 `athlete.toml`）。教练结论仍由你在对话里写入报告文件。用户说“打开训练中心”时启动它（用户自己的终端里可能已经在跑）。
+- `python3 -m coach publish [--offline] [--dry-run]`：把能力看板（手机/电脑自适应的静态页）发布到 GitHub Pages：https://lechaegg.github.io/marathon-coach/ 。只往 `gh-pages` 分支强推 `index.html`，不动 `main` 和工作区。**用户已长期授权：每次跑后分析、周复盘或周计划完成（`## 教练结论` 已写入）后，先跑 `python3 -m coach publish`，再把新增/改动的 `reports/`、`plan/`、`journal/` 提交并推送到 `main`（页面里的“完整分析”链接指向 GitHub 上的 `main`）**，并把页面地址告诉用户。仓库和页面都是公开的：不要把凭据、`data/` 缓存推上去。
 - `python3 -m coach dash`：只生成静态版 `reports/dashboard.html`（离线能力看板；`today`/`run`/`week`/`log` 之后自动更新）
 - `python3 -m coach push-plan [周] [--apply]`：把 `plan/weeks/<周>.workouts.toml` 的跑步课表上传到 Intervals.icu 日历（用户在手机 App 里再同步到 Apple Watch）。默认只预览；`--apply` 写线上：新一周计划生成后直接上传（用户已授权），之后的修改须先和用户讨论确认再更新。只增删改 `external_id` 以 `coach-` 开头的事件。
 - 任何报告命令加 `--offline`：不联网，只用本地缓存

@@ -37,6 +37,7 @@ def _run_rec(m, slope, ref_hr, pain):
         "rhr": sc.get("rhr"), "aei": _r(pace_s(a), 0), "cad": _r(dyn.get("cad"), 0), "gct": _r(dyn.get("gct"), 0),
         "step": _r(dyn.get("step"), 2), "re": _r(sc.get("re"), 3), "dec": _r(m.get("decoupling")), "load": _r(m.get("load"), 0),
         "era": m.get("era"), "tm": bool(m.get("treadmill")), "pain": pain.get(m["id"]),
+        "rep": (REPORTS / "runs" / f"{m['date']}_{m['id']}.md").exists(),
         "segs": [{"s": round(x["start_s"]), "mt": round(x["mt"]), "pace": round(x["pace"]), "hr": round(x["hr"]), "v": _r(x["v"])}
                  for x in (dims.get("speed") or {}).get("segs", [])],
         "blocks": [{"s": round(x["start_s"]), "mt": round(x["mt"]), "pace": round(x["pace"]), "hr": _r(x.get("hr"), 0), "v": _r(x["v"])}
@@ -280,15 +281,20 @@ def _season(ctx, data):
     return {"start": str(start), "weeks": out, "checkpoints": cps}
 
 
-def write(sync_err=None):
-    ctx = Ctx(sync_err)
+def render(ctx, report_base="runs/", published=False):
+    """Return the dashboard HTML. report_base: where per-run report links point (relative locally, GitHub URL when published)."""
     data = build(ctx)
+    data["published"] = published
+    data["report_base"] = report_base
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     lb = data["labels"]
     html = (TEMPLATES / "dashboard.html").read_text().replace("/*__DATA__*/null", blob.replace("</", "<\\/"))
     for k, v in (("{{GOAL}}", lb["goal"]), ("{{BASE}}", lb["baseline"]), ("{{PREV}}", lb["previous"])):
         html = html.replace(k, v)
+    return html
+
+
+def write(sync_err=None):
     HTML_OUT.parent.mkdir(parents=True, exist_ok=True)
-    HTML_OUT.write_text(html)
-    out = [HTML_OUT]
-    return out
+    HTML_OUT.write_text(render(Ctx(sync_err)))
+    return [HTML_OUT]

@@ -2,7 +2,14 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17191c" media="(prefers-color-scheme: dark)">
+<meta name="description" content="东京马拉松 2027 备战：跑力、能力维度、周跑量与恢复指标看板">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="跑力看板">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdf'/%3E%3Cpath d='M5 22l7-8 5 5 10-12' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>跑力与能力看板</title>
 <style>
 :root {
@@ -18,8 +25,9 @@
   }
 }
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; color-scheme: light dark; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "PingFang SC", "Hiragino Sans", sans-serif; }
-main { max-width: 1240px; margin: 0 auto; padding: 24px 20px 60px; }
+main { max-width: 1240px; margin: 0 auto; padding: 24px max(20px, env(safe-area-inset-right)) 60px max(20px, env(safe-area-inset-left)); }
 h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
 h2 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
 .sub { color: var(--muted); font-size: 12px; }
@@ -40,13 +48,15 @@ h2 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
 section.panel { margin-bottom: 22px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 28px; }
 .chart { width: 100%; position: relative; }
-.chart svg { display: block; width: 100%; overflow: visible; }
+.chart svg { display: block; width: 100%; overflow: visible; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; }
 .chart text { fill: var(--muted); font-size: 11px; }
 .cap { color: var(--faint); font-size: 11px; margin: 4px 0 0; }
-#tip { position: fixed; pointer-events: none; background: var(--panel); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 9px; font-size: 12px; display: none; z-index: 10; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#tip { position: fixed; pointer-events: none; background: var(--panel); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 9px; font-size: 12px; display: none; z-index: 10; white-space: normal; max-width: calc(100vw - 16px); font-variant-numeric: tabular-nums; }
 #tip b { font-weight: 600; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 24px; }
 #detail { background: var(--panel); border-radius: 8px; padding: 14px 16px; align-self: start; position: sticky; top: 12px; font-size: 13px; }
+#detail .close { display: none; }
+#dim { display: none; }
 #detail table, table.runs { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 #detail td { padding: 2px 4px; } #detail td:first-child { color: var(--muted); }
 table.runs th, table.runs td { padding: 5px 6px; text-align: right; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
@@ -57,7 +67,37 @@ table.runs tr.sel td { background: var(--panel); font-weight: 600; }
 .dimrow { display: grid; grid-template-columns: 44px 1fr 40px; gap: 6px; align-items: center; margin: 3px 0; }
 .dimbar { height: 6px; background: var(--grid); border-radius: 3px; position: relative; }
 .dimbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
-@media (max-width: 1000px) { .kpis { grid-template-columns: repeat(3, 1fr); } .grid2, .layout { grid-template-columns: 1fr; } }
+.tablewrap { max-height: 420px; overflow: auto; -webkit-overflow-scrolling: touch; }
+.foot { color: var(--faint); font-size: 11px; margin-top: 28px; text-align: center; }
+.foot a { color: var(--muted); }
+@media (min-width: 1500px) { main { max-width: 1440px; } .grid2 { grid-template-columns: 1fr 1fr 1fr; } }
+@media (max-width: 1000px) {
+  .kpis { grid-template-columns: repeat(3, 1fr); } .grid2, .layout { grid-template-columns: 1fr; }
+  .kpi.main { grid-column: 1 / -1; }
+  /* 明细改成底部抽屉：点图上的点/表格行弹出 */
+  #detail { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 20; max-height: 72vh; overflow: auto; border-radius: 14px 14px 0 0;
+    padding: 16px 16px calc(18px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px rgba(0,0,0,.28); transform: translateY(105%); visibility: hidden;
+    transition: transform .22s ease, visibility 0s .22s; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  #detail.open { transform: none; visibility: visible; transition: transform .22s ease; }
+  #detail .close { display: block; position: absolute; right: 8px; top: 6px; width: 40px; height: 40px; border: 0; background: none; color: var(--muted); font-size: 26px; line-height: 1; cursor: pointer; }
+  #dim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 15; }
+  #dim.on { display: block; }
+}
+@media (max-width: 600px) {
+  main { padding-top: 16px; padding-bottom: 40px; }
+  h1 { font-size: 19px; }
+  .kpis { grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .kpi:last-child { grid-column: 1 / -1; }
+  .kpi { padding: 10px 11px; } .kpi .v { font-size: 20px; } .kpi.main .v { font-size: 30px; }
+  .controls { gap: 8px 12px; }
+  .seg button { padding: 7px 14px; font-size: 14px; }
+  .toggles label { display: inline-block; padding: 6px 0; margin-right: 12px; font-size: 14px; }
+  .grid2 { gap: 18px; }
+  .chart text { font-size: 10px; }
+  table.runs th, table.runs td { padding: 7px 5px; font-size: 12px; white-space: nowrap; }
+  table.runs th:nth-child(n+11), table.runs td:nth-child(n+11) { display: none; }
+  .tablewrap { max-height: 360px; }
+}
 </style>
 </head>
 <body>
@@ -88,12 +128,14 @@ table.runs tr.sel td { background: var(--panel); font-weight: 600; }
       </div>
       <section class="panel" style="margin-top:22px">
         <h2>近期跑步评分</h2>
-        <div style="max-height:420px;overflow:auto"><table class="runs" id="runs"></table></div>
+        <div class="tablewrap"><table class="runs" id="runs"></table></div>
       </section>
     </div>
     <aside id="detail"></aside>
   </div>
+  <div class="foot" id="foot"></div>
 </main>
+<div id="dim"></div>
 <div id="tip"></div>
 <script>
 const DATA = /*__DATA__*/null;
@@ -108,7 +150,8 @@ const DIMS = [
   { k: "speed", r: "S", name: "速度", color: "--speed", w: 1.6 },
   { k: "endurance", r: "E", name: "耐力", color: "--endurance", w: 1.6 },
 ];
-const state = { range: localStorage.getItem("dash.range") || "12w", dims: JSON.parse(localStorage.getItem("dash.dims") || '{"composite":true,"aerobic":true,"threshold":true,"speed":true,"endurance":false}'), dots: localStorage.getItem("dash.dots") === "1", sel: null };
+const LS = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const state = { range: LS.get("dash.range") || "12w", dims: JSON.parse(LS.get("dash.dims") || '{"composite":true,"aerobic":true,"threshold":true,"speed":true,"endurance":false}'), dots: LS.get("dash.dots") === "1", sel: null };
 
 const gapTo = (v) => (v == null ? "-" : `${v >= DATA.need ? "+" : "−"}${Math.abs(v - DATA.need).toFixed(1)}`);
 const fmtPace = (s) => (s == null ? "-" : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`);
@@ -138,6 +181,7 @@ function xTicks(x0, x1) {
   else { d.setDate(1); d.setMonth(d.getMonth() + 1); const stepM = span > 500 ? 3 : 1; for (; d.getTime() <= x1; d.setMonth(d.getMonth() + stepM)) out.push([d.getTime(), d.getMonth() === 0 ? `${d.getFullYear()}` : `${d.getMonth() + 1}月`]); }
   return out;
 }
+const coarse = window.matchMedia("(pointer: coarse)").matches;
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
 
@@ -197,11 +241,11 @@ function chart(host, o) {
   const tip = $("#tip");
   const nearest = (mx, my) => {
     const dots = hits.filter((h) => h.dot && h.s.click);
-    let best = null, bd = 144;
+    let best = null, bd = coarse ? 900 : 144;
     dots.forEach((h) => { const d = (h.px - mx) ** 2 + (h.py - my) ** 2; if (d < bd) { bd = d; best = h; } });
     return best;
   };
-  svg.addEventListener("mousemove", (ev) => {
+  const onMove = (ev) => {
     const r = svg.getBoundingClientRect(), mx = (ev.clientX - r.left) * (W / r.width), my = (ev.clientY - r.top) * (H / r.height);
     if (mx < P.l || mx > W - P.r) { tip.style.display = "none"; guide.setAttribute("opacity", 0); return; }
     const near = nearest(mx, my);
@@ -219,11 +263,15 @@ function chart(host, o) {
     }
     guide.setAttribute("x1", xs(xAt)); guide.setAttribute("x2", xs(xAt)); guide.setAttribute("opacity", 0.35);
     tip.innerHTML = rows.join("<br>"); tip.style.display = "block";
-    const tw = tip.offsetWidth; tip.style.left = Math.min(window.innerWidth - tw - 8, ev.clientX + 14) + "px"; tip.style.top = ev.clientY + 14 + "px";
+    const tw = tip.offsetWidth, th = tip.offsetHeight, touch = ev.pointerType === "touch";
+    tip.style.left = Math.max(8, Math.min(window.innerWidth - tw - 8, touch ? ev.clientX - tw / 2 : ev.clientX + 14)) + "px";
+    tip.style.top = (touch ? Math.max(8, ev.clientY - th - 28) : ev.clientY + 14) + "px";
     svg.style.cursor = near ? "pointer" : "default";
-  });
-  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; guide.setAttribute("opacity", 0); });
-  svg.addEventListener("click", (ev) => { const r = svg.getBoundingClientRect(); const near = nearest((ev.clientX - r.left) * (W / r.width), (ev.clientY - r.top) * (H / r.height)); if (near && near.s.click) near.s.click(near.p); });
+  };
+  svg.addEventListener("pointermove", onMove); svg.addEventListener("pointerdown", onMove);
+  svg.addEventListener("pointerleave", () => { tip.style.display = "none"; guide.setAttribute("opacity", 0); });
+  svg.addEventListener("pointercancel", () => { tip.style.display = "none"; guide.setAttribute("opacity", 0); });
+  svg.addEventListener("click", (ev) => { tip.style.display = "none"; const r = svg.getBoundingClientRect(); const near = nearest((ev.clientX - r.left) * (W / r.width), (ev.clientY - r.top) * (H / r.height)); if (near && near.s.click) near.s.click(near.p); });
 }
 
 // ------------------------------------------------------------ sections
@@ -251,11 +299,11 @@ function renderToggles() {
   $("#toggles").innerHTML = DIMS.map((m) => `<label><input type="checkbox" data-k="${m.k}" ${state.dims[m.k] ? "checked" : ""}><span class="sw" style="background:${css(m.color)}"></span>${m.name}</label>`).join("")
     + `<label style="margin-left:12px;color:var(--muted)"><input type="checkbox" data-k="__dots" ${state.dots ? "checked" : ""}>显示单次跑步点</label>`;
   $("#toggles").querySelectorAll("input").forEach((i) => i.addEventListener("change", () => {
-    if (i.dataset.k === "__dots") { state.dots = i.checked; localStorage.setItem("dash.dots", i.checked ? "1" : "0"); }
-    else { state.dims[i.dataset.k] = i.checked; localStorage.setItem("dash.dims", JSON.stringify(state.dims)); }
+    if (i.dataset.k === "__dots") { state.dots = i.checked; LS.set("dash.dots", i.checked ? "1" : "0"); }
+    else { state.dims[i.dataset.k] = i.checked; LS.set("dash.dims", JSON.stringify(state.dims)); }
     renderCharts();
   }));
-  $("#range").querySelectorAll("button").forEach((b) => { b.classList.toggle("on", b.dataset.r === state.range); b.onclick = () => { state.range = b.dataset.r; localStorage.setItem("dash.range", state.range); renderToggles(); renderCharts(); }; });
+  $("#range").querySelectorAll("button").forEach((b) => { b.classList.toggle("on", b.dataset.r === state.range); b.onclick = () => { state.range = b.dataset.r; LS.set("dash.range", state.range); renderToggles(); renderCharts(); }; });
 }
 
 const runTip = (r) => `<b>${r.d} ${esc(r.label)} ${r.km}km</b><br>综合 ${f1(r.comp)}（${r.conf || "-"}）｜有氧 ${f1(r.A)} 阈值 ${f1(r.T)} 速度 ${f1(r.S)} 耐力 ${f1(r.E)}<br>配速 ${fmtPace(r.pace)} HR ${r.hr ?? "-"}｜${r.temp != null ? `${r.temp}°C 露点 ${r.dew}°C 修正 +${r.heat}%` : "无天气"}`;
@@ -310,11 +358,16 @@ function renderTable() {
   $("#runs").querySelectorAll("tr[data-id]").forEach((tr) => (tr.onclick = () => selectRun({ run: runById[tr.dataset.id] })));
 }
 
-function selectRun(p) {
+const mobile = () => window.matchMedia("(max-width: 1000px)").matches;
+function closeDetail() { $("#detail").classList.remove("open"); $("#dim").classList.remove("on"); }
+$("#dim").onclick = closeDetail;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });
+
+function selectRun(p, quiet) {
   const r = p.run; if (!r) return;
   state.sel = r.id;
   const bar = (label, v, color) => v == null ? "" : `<div class="dimrow"><span>${label}</span><div class="dimbar"><i style="width:${Math.max(0, Math.min(100, ((v - 35) / 25) * 100))}%;background:${css(color)}"></i></div><b>${v.toFixed(1)}</b></div>`;
-  let h = `<h2>${r.d} ${r.t} · ${esc(r.label)}</h2><div class="sub">${r.km} km｜${fmtDur(r.mt)}｜${fmtPace(r.pace)}/km｜HR ${r.hr ?? "-"}｜负荷 ${r.load ?? "-"}</div>`;
+  let h = `<button class="close" aria-label="关闭" onclick="closeDetail()">×</button><h2 style="padding-right:36px">${r.d} ${r.t} · ${esc(r.label)}</h2><div class="sub">${r.km} km｜${fmtDur(r.mt)}｜${fmtPace(r.pace)}/km｜HR ${r.hr ?? "-"}｜负荷 ${r.load ?? "-"}</div>`;
   h += `<div style="margin:10px 0 4px;font-size:26px;font-weight:600;color:${css("--accent")}">${f1(r.comp)} <span style="font-size:13px;color:${css("--muted")}">距${DATA.labels.goal} ${gapTo(r.comp)}｜置信度 ${r.conf || "-"}</span></div>`;
   h += bar("有氧", r.A, "--aerobic") + bar("阈值", r.T, "--threshold") + bar("速度", r.S, "--speed") + bar("耐力", r.E, "--endurance");
   h += `<div class="sub" style="margin-top:4px">条形刻度 35–60；${DATA.labels.goal} ≈ ${DATA.need}</div><table style="margin-top:10px">`;
@@ -326,15 +379,20 @@ function selectRun(p) {
   h += "</table>";
   if (r.segs.length) h += `<h3 style="font-size:13px;margin:12px 0 4px">速度维度快段</h3><table>${r.segs.map((s) => `<tr><td>${fmtDur(s.s)} 起</td><td>${fmtDur(s.mt)} @${fmtPace(s.pace)}，HR ${s.hr} → <b>${s.v}</b></td></tr>`).join("")}</table>`;
   if (r.blocks.length) h += `<h3 style="font-size:13px;margin:12px 0 4px">阈值维度连续段</h3><table>${r.blocks.map((s) => `<tr><td>${fmtDur(s.s)} 起</td><td>${fmtDur(s.mt)} @${fmtPace(s.pace)}，HR ${s.hr ?? "-"} → <b>${s.v}</b></td></tr>`).join("")}</table>`;
-  h += `<p class="cap">完整分析：<a href="runs/${r.d}_${r.id}.md">runs/${r.d}_${r.id}.md</a>（运行 <code>python3 -m coach run ${r.id}</code> 生成）</p>`;
+  const rp = `${r.d}_${r.id}.md`;
+  if (DATA.published) h += r.rep ? `<p class="cap">完整分析：<a href="${DATA.report_base}${rp}" target="_blank" rel="noopener">${rp}</a></p>` : "";
+  else h += `<p class="cap">完整分析：<a href="${DATA.report_base}${rp}">${DATA.report_base}${rp}</a>（运行 <code>python3 -m coach run ${r.id}</code> 生成）</p>`;
   $("#detail").innerHTML = h;
+  if (!quiet && mobile()) { $("#detail").classList.add("open"); $("#dim").classList.add("on"); $("#detail").scrollTop = 0; }
   renderTable(); renderCharts();
 }
 
 renderMeta(); renderKpis(); renderToggles(); renderCharts(); renderTable();
 const lastScored = [...DATA.runs].reverse().find((r) => r.comp != null);
-if (lastScored) selectRun({ run: lastScored });
-let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderCharts, 150); });
+if (lastScored) selectRun({ run: lastScored }, true);
+let rt, lastW = innerWidth; // 手机滚动时地址栏伸缩会触发 resize：只在宽度变化时重绘
+window.addEventListener("resize", () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rt); rt = setTimeout(renderCharts, 150); });
+if (DATA.published) $("#foot").innerHTML = `由 AI 跑步教练自动生成｜<a href="${DATA.report_base.replace(/blob\/.*/, "")}" target="_blank" rel="noopener">GitHub 仓库</a>`;
 </script>
 </body>
 </html>

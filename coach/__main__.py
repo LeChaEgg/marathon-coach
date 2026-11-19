@@ -6,6 +6,7 @@ python3 -m coach week [日期]       周复盘，默认最近一个完整周（�
 python3 -m coach runs [--days 42] [--group easy|long|tempo|interval|race]
 python3 -m coach serve [--port 8787] [--open]   训练中心（本地网页，实时读取报告与教练结论，可直接同步/生成报告/提交反馈）
 python3 -m coach dash             静态看板 reports/dashboard.html（today/run/week/log 后自动更新）
+python3 -m coach publish [--dry-run]   把静态看板发布到 GitHub Pages（gh-pages 分支；先同步）
 python3 -m coach log ...          记录主观反馈（RPE、疼痛等）
 python3 -m coach sync [--full] [--rebuild]
 python3 -m coach push-plan [周] [--apply]   把周计划推到 Intervals.icu 日历（默认只预览），再在手机 App 里同步到手表
@@ -81,11 +82,13 @@ def main():
     s.add_argument("--no-streams", action="store_true")
     s.add_argument("--rebuild", action="store_true", help="重算所有跑步指标")
 
-    for name in ("today", "run", "week", "runs", "dash"):
+    for name in ("today", "run", "week", "runs", "dash", "publish"):
         sp = sub.add_parser(name)
         sp.add_argument("--offline", action="store_true")
         if name in ("today", "week"):
             sp.add_argument("date", nargs="?")
+        if name == "publish":
+            sp.add_argument("--dry-run", action="store_true", help="只生成 reports/dashboard.published.html，不推送")
         if name == "run":
             sp.add_argument("ref", nargs="?", default="latest", help="活动ID、日期YYYY-MM-DD 或 latest")
         if name == "runs":
@@ -152,6 +155,10 @@ def main():
         return
 
     err = _sync(args)
+    if args.cmd == "publish":
+        from . import publish
+        publish.publish(err, dry_run=args.dry_run)
+        return
     if args.cmd == "dash":
         for p in dashboard.write(err):
             print(f"[已生成 {p}]")
