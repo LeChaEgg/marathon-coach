@@ -12,14 +12,14 @@ steps = """
 
 [[workout]]
 date = "2026-11-25"
-name = "W48 周三 VO2 4×1000 m"
+name = "W48 周三 VO2 5×1000 m"
 steps = """
 Warmup
 - 2.5km ≤147bpm
 Strides 4x
 - 20s 160-175bpm
 - 40s ≤140bpm
-VO2 4x
+VO2 5x
 - 1km 170-180bpm
 - 2m30s ≤140bpm
 Cooldown
