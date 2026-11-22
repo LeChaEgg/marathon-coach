@@ -1,0 +1,66 @@
+# 与 2026-W48.md 对应的结构化课表，由 `python3 -m coach push-plan` 推到 Intervals.icu。
+# 只写要上手表的跑步；休息日、力量不写。心率目标用 bpm（脚本按 LTHR 换算）。
+week = "2026-W48"
+
+[[workout]]
+date = "2026-11-24"
+load = 46   # 轻松/恢复日：≈3.8×km，保证自动配对
+name = "W48 周二 轻松跑 12 km"
+steps = """
+- 12km ≤142bpm
+"""
+
+[[workout]]
+date = "2026-11-25"
+name = "W48 周三 VO2 4×1000 m"
+steps = """
+Warmup
+- 2.5km ≤147bpm
+Strides 4x
+- 20s 160-175bpm
+- 40s ≤140bpm
+VO2 4x
+- 1km 170-180bpm
+- 2m30s ≤140bpm
+Cooldown
+- 2.5km ≤140bpm
+"""
+
+[[workout]]
+date = "2026-11-26"
+load = 30   # 轻松/恢复日：≈3.8×km，保证自动配对
+name = "W48 周四 恢复跑 8 km"
+steps = """
+- 8km ≤140bpm
+"""
+
+[[workout]]
+date = "2026-11-27"
+name = "W48 周五 轻阈值 3×2 km"
+steps = """
+Warmup
+- 2.5km ≤147bpm
+Strides 4x
+- 20s 160-175bpm
+- 40s ≤140bpm
+Threshold 3x
+- 2km 164-171bpm
+- 90s ≤140bpm
+Cooldown
+- 2km ≤140bpm
+"""
+
+[[workout]]
+date = "2026-11-28"
+load = 27   # 轻松/恢复日：≈3.8×km，保证自动配对
+name = "W48 周六 轻松跑 7 km"
+steps = """
+- 7km ≤135bpm
+"""
+
+[[workout]]
+date = "2026-11-29"
+name = "W48 周日 长距离 22 km（补给定稿）"
+steps = """
+- 22km 140-148bpm
+"""
