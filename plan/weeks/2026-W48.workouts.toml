@@ -60,7 +60,10 @@ steps = """
 
 [[workout]]
 date = "2026-11-29"
-name = "W48 周日 长距离 22 km（补给定稿）"
+name = "W48 周日 长距离 25 km（末 5 km 渐进，补给定稿）"
 steps = """
-- 22km 140-148bpm
+Easy
+- 20km 140-148bpm
+Progression
+- 5km 150-160bpm
 """
