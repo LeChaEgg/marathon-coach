@@ -110,7 +110,7 @@ table.runs tr.sel td { background: var(--panel); font-weight: 600; }
   <div class="kpis" id="kpis"></div>
   <div class="controls">
     <div class="seg" id="range">
-      <button data-r="12w">近12周</button><button data-r="season">赛季</button><button data-r="all">全部</button>
+      <button data-r="2w">近2周</button><button data-r="4w">近4周</button><button data-r="12w">近12周</button><button data-r="season">赛季</button><button data-r="all">全部</button>
     </div>
     <div class="toggles" id="toggles"></div>
   </div>
@@ -165,7 +165,8 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 
 function xRange() {
   const today = T(DATA.generated.slice(0, 10));
-  if (state.range === "12w") return [today - 84 * DAY, today + 2 * DAY];
+  const rd = { "2w": 14, "4w": 28, "12w": 84 }[state.range];
+  if (rd) return [today - rd * DAY, today + 2 * DAY];
   if (state.range === "season") return [T(DATA.season_start), T(DATA.race.date) + DAY];
   return [T(DATA.daily.length ? DATA.daily[0].d : DATA.runs[0].d), today + 2 * DAY];
 }
@@ -180,7 +181,8 @@ function niceTicks(lo, hi, n = 5) {
 function xTicks(x0, x1) {
   const span = (x1 - x0) / DAY, out = [];
   const d = new Date(x0); d.setHours(12, 0, 0, 0);
-  if (span <= 120) { d.setDate(d.getDate() + ((8 - d.getDay()) % 7)); for (; d.getTime() <= x1; d.setDate(d.getDate() + 14)) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
+  if (span <= 21) { d.setDate(d.getDate() + 1); for (; d.getTime() <= x1; d.setDate(d.getDate() + 2)) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
+  else if (span <= 120) { d.setDate(d.getDate() + ((8 - d.getDay()) % 7)); for (; d.getTime() <= x1; d.setDate(d.getDate() + (span > 60 ? 14 : 7))) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
   else { d.setDate(1); d.setMonth(d.getMonth() + 1); const stepM = span > 500 ? 3 : 1; for (; d.getTime() <= x1; d.setMonth(d.getMonth() + stepM)) out.push([d.getTime(), d.getMonth() === 0 ? `${d.getFullYear()}` : `${d.getMonth() + 1}月`]); }
   return out;
 }

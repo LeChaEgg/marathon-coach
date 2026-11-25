@@ -315,7 +315,8 @@ function niceTicks(lo, hi, n = 4) {
 }
 function timeTicks(x0, x1) {
   const span = (x1 - x0) / DAY, out = [], d = new Date(x0); d.setHours(12, 0, 0, 0);
-  if (span <= 130) { d.setDate(d.getDate() + ((8 - d.getDay()) % 7)); for (; d.getTime() <= x1; d.setDate(d.getDate() + (span > 60 ? 14 : 7))) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
+  if (span <= 21) { d.setDate(d.getDate() + 1); for (; d.getTime() <= x1; d.setDate(d.getDate() + 2)) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
+  else if (span <= 130) { d.setDate(d.getDate() + ((8 - d.getDay()) % 7)); for (; d.getTime() <= x1; d.setDate(d.getDate() + (span > 60 ? 14 : 7))) out.push([d.getTime(), `${d.getMonth() + 1}/${d.getDate()}`]); }
   else { d.setDate(1); d.setMonth(d.getMonth() + 1); const st = span > 500 ? 3 : 1; for (; d.getTime() <= x1; d.setMonth(d.getMonth() + st)) out.push([d.getTime(), d.getMonth() === 0 ? `${d.getFullYear()}` : `${d.getMonth() + 1}月`]); }
   return out;
 }
@@ -573,7 +574,7 @@ pages.ability = async () => {
   const d = S.now.dims, range = store.get("ab.range", "12w"), show = store.get("ab.dims", { composite: true, aerobic: true, threshold: true, speed: true, endurance: false }), dots = store.get("ab.dots", false);
   const html = `
   <div class="hero"><div><div class="eyebrow">状态跑力 = 42 天加权、半衰期 14 天 · VDOT 刻度 · ${S.labels.goal} ≈ ${S.need}</div><h1>能力</h1></div>
-    <div class="seg" id="range">${[["12w", "近 12 周"], ["season", "赛季"], ["all", "全部"]].map(([k, n]) => `<button data-r="${k}" class="${k === range ? "on" : ""}">${n}</button>`).join("")}</div></div>
+    <div class="seg" id="range">${[["2w", "近 2 周"], ["4w", "近 4 周"], ["12w", "近 12 周"], ["season", "赛季"], ["all", "全部"]].map(([k, n]) => `<button data-r="${k}" class="${k === range ? "on" : ""}">${n}</button>`).join("")}</div></div>
   <div class="tiles">${DIMS.map((m) => { const x = d[m.k]; return `<div class="tile"><div class="l"><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;background:var(${m.color})"></i>${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距${S.labels.goal} ${sgn(x.v - S.need)}${S.ref ? ` · 准备线 ${sgn(x.v - S.ref)}` : ""} · 4 周 ${sgn(x.delta)}<br>${x.stale ? `<span class="chip y">证据 ${x.age} 天前</span>` : x.age != null ? `最近证据 ${x.age} 天前` : "各维度加权"}` : "无证据"}</div></div>`; }).join("")}</div>
   <section class="card" style="margin-top:18px"><h2>跑力随时间变化</h2>
     <div class="legend" id="toggles">${DIMS.map((m) => `<label><input type="checkbox" data-k="${m.k}" ${show[m.k] ? "checked" : ""}><i class="ln" style="border-color:var(${m.color})"></i>${m.name}</label>`).join("")}<label style="margin-left:10px"><input type="checkbox" data-k="__dots" ${dots ? "checked" : ""}>单次跑步的点</label></div>
@@ -590,7 +591,7 @@ pages.ability = async () => {
   </div>`;
   const draw = () => {
     const today = T(S.today.date);
-    const x = range === "12w" ? [today - 84 * DAY, today + 2 * DAY] : range === "season" ? [T(S.season.start), T(S.race.date) + DAY] : [T(S.daily.length ? S.daily[0].d : S.runs[0].d), today + 2 * DAY];
+    const x = { "2w": 14, "4w": 28, "12w": 84 }[range] ? [today - { "2w": 14, "4w": 28, "12w": 84 }[range] * DAY, today + 2 * DAY] : range === "season" ? [T(S.season.start), T(S.race.date) + DAY] : [T(S.daily.length ? S.daily[0].d : S.runs[0].d), today + 2 * DAY];
     const series = [];
     DIMS.forEach((m) => {
       if (!show[m.k]) return;
