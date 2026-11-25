@@ -135,7 +135,7 @@ def build(ctx):
         "generated": dt.datetime.now().isoformat(timespec="minutes"),
         "synced": ctx.state.get("last_sync"), "weather_error": ctx.state.get("weather_error"),
         "race": {"name": cfg["race"]["name"], "date": cfg["race"]["date"], "goal_s": goal, "days": (ctx.race - t).days},
-        "need": need, "pbs": pbs, "baseline_since": ctx.baseline_since,
+        "need": need, "ref": cfg.get("readiness", {}).get("reference_vdot"), "pbs": pbs, "baseline_since": ctx.baseline_since,
         "labels": {"goal": goal_label(cfg), "baseline": baseline_label(cfg), "previous": previous_label(cfg),
                    "injury": injury_focus(cfg)},
         "season_start": cfg["race"].get("season_start") or str(ctx.race - dt.timedelta(weeks=23)),

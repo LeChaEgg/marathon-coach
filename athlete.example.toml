@@ -62,6 +62,7 @@ aggressiveness = 3
 [readiness]
 above_peak_cost = 3.0        # 假设值：新高度的进步比恢复慢约 3 倍；无个体数据可校准
 ready_weeks_before = 2       # 能力需在赛前 2 周（减量开始）到位
+# reference_vdot = 55.0      # 可选：第二条参照线“准备线”（目标所需跑力是平衡点，没有首马折扣的余量）；只用于对照显示，不改进度算法
 # peak = 50.0                # 默认自动取历史最高的周状态综合跑力
 
 [score]

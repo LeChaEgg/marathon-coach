@@ -93,6 +93,7 @@ def assess(ctx, d=None):
     s0 = (rolling_state(runs, season, cfg).get("composite") or {}).get("v")
     out = {"need": need, "now": now, "gap": now - need if now else None, "peak": peak, "peak_date": str(peak_d) if peak_d else None,
            "above_peak_cost": k, "ready_by": str(ready_by), "season_start": str(season), "season_base": s0,
+           "ref": rc.get("reference_vdot"), "gap_ref": (now - rc["reference_vdot"]) if now and rc.get("reference_vdot") else None,
            "best_rate": br[0] if br else None, "best_from": str(br[1]) if br else None, "best_to": str(br[2]) if br else None}
     if now is None or s0 is None:
         return out

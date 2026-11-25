@@ -533,7 +533,7 @@ pages.season = async () => {
         <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px"><span class="v" style="font-size:38px;font-weight:650">${rd.progress == null ? "–" : Math.round(rd.progress) + "%"}</span><span class="sub">匀速完成所需进度线今天在 ${f1(rd.progress_expected, 0)}% · ${rd.ahead >= 0 ? "领先" : "落后"} ${f1(Math.abs(rd.ahead))} 分</span></div>
         <div class="bar"><i style="width:${Math.max(0, Math.min(100, rd.progress || 0))}%"></i><u style="left:${Math.max(0, Math.min(100, rd.progress_expected || 0))}%" title="所需进度线"></u></div>
         <div class="tiles" style="margin-top:16px">
-          ${tile("状态综合跑力", f1(rd.now), `${S.labels.goal} 需要 ${rd.need}（差 ${f1(Math.abs(rd.gap))}）`)}
+          ${tile("状态综合跑力", f1(rd.now), `${S.labels.goal} 需要 ${rd.need}（${rd.gap >= 0 ? "超出" : "差"} ${f1(Math.abs(rd.gap))}）${rd.ref ? `<br>准备线 ${rd.ref}（${rd.gap_ref >= 0 ? "超出" : "差"} ${f1(Math.abs(rd.gap_ref))}）` : ""}`)}
           ${tile("历史峰值", f1(rd.peak), `${rd.peak_date || ""} · 之内 ${f1(rd.regain_left)} 分 / 之上 ${f1(rd.new_left)} 分`)}
           ${tile("所需进步速度", f1(rd.req_rate, 2), `到 ${md5(rd.ready_by || "")} 还有 ${f1(rd.weeks_left, 0)} 周${rd.req_ratio ? ` · 历史最快 8 周的 ${Math.round(rd.req_ratio * 100)}%` : ""}`, "分/周")}
           ${tile("近 8 周周均", f1(vol.k8), vol.plan_k8 ? `赛前 8 周计划 ${f1(vol.plan_k8, 0)} km` : "", "km")}
@@ -557,7 +557,7 @@ pages.season = async () => {
   const mount = () => {
     $("#lv").querySelectorAll("button").forEach((b) => (b.onclick = () => { store.set("style.sel", +b.dataset.lv); render(); }));
     const x = [T(S.season.start) - 4 * DAY, T(S.race.date) + 3 * DAY], mid = (w) => T(w.ws) + 3 * DAY;
-    chart($("#c-state"), { x, height: 220, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `${S.labels.goal} ${S.need}`, strong: 1, left: 1 }], vlines: [{ x: T(S.race.date), label: "比赛", left: 1 }], series: [
+    chart($("#c-state"), { x, height: 220, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `${S.labels.goal} ${S.need}`, strong: 1, left: 1 }].concat(S.ref ? [{ y: S.ref, label: `准备线 ${S.ref}`, left: 1 }] : []), vlines: [{ x: T(S.race.date), label: "比赛", left: 1 }], series: [
       { name: "所需进度线", color: "--neutral", type: "line", dash: "5 4", gap: 99, pts: wk.filter((w) => w.req != null).map((w) => ({ x: T(w.ws) + 6 * DAY, y: w.req })), fmt: (p) => f1(p.y) },
       { name: "状态综合", color: "--s1", type: "line", markers: 1, gap: 99, pts: wk.filter((w) => w.state && w.state.composite != null).map((w) => ({ x: Math.min(T(w.ws) + 6 * DAY, T(S.today.date)), y: w.state.composite })), fmt: (p) => f1(p.y), endLabel: (p) => f1(p.y) },
     ] });
@@ -574,7 +574,7 @@ pages.ability = async () => {
   const html = `
   <div class="hero"><div><div class="eyebrow">状态跑力 = 42 天加权、半衰期 14 天 · VDOT 刻度 · ${S.labels.goal} ≈ ${S.need}</div><h1>能力</h1></div>
     <div class="seg" id="range">${[["12w", "近 12 周"], ["season", "赛季"], ["all", "全部"]].map(([k, n]) => `<button data-r="${k}" class="${k === range ? "on" : ""}">${n}</button>`).join("")}</div></div>
-  <div class="tiles">${DIMS.map((m) => { const x = d[m.k]; return `<div class="tile"><div class="l"><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;background:var(${m.color})"></i>${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距${S.labels.goal} ${sgn(x.v - S.need)} · 4 周 ${sgn(x.delta)}<br>${x.stale ? `<span class="chip y">证据 ${x.age} 天前</span>` : x.age != null ? `最近证据 ${x.age} 天前` : "各维度加权"}` : "无证据"}</div></div>`; }).join("")}</div>
+  <div class="tiles">${DIMS.map((m) => { const x = d[m.k]; return `<div class="tile"><div class="l"><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;background:var(${m.color})"></i>${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距${S.labels.goal} ${sgn(x.v - S.need)}${S.ref ? ` · 准备线 ${sgn(x.v - S.ref)}` : ""} · 4 周 ${sgn(x.delta)}<br>${x.stale ? `<span class="chip y">证据 ${x.age} 天前</span>` : x.age != null ? `最近证据 ${x.age} 天前` : "各维度加权"}` : "无证据"}</div></div>`; }).join("")}</div>
   <section class="card" style="margin-top:18px"><h2>跑力随时间变化</h2>
     <div class="legend" id="toggles">${DIMS.map((m) => `<label><input type="checkbox" data-k="${m.k}" ${show[m.k] ? "checked" : ""}><i class="ln" style="border-color:var(${m.color})"></i>${m.name}</label>`).join("")}<label style="margin-left:10px"><input type="checkbox" data-k="__dots" ${dots ? "checked" : ""}>单次跑步的点</label></div>
     <div class="chart" id="c-score"></div><p class="cap">线 = 状态跑力；点 = 单次评分（空心 = 低置信度），点击打开那次跑步。虚线是${S.labels.goal}与 PB 对应的 VDOT。${S.labels.previous}时代（${S.baseline_since} 之前）口径不同，只作参考。</p></section>
@@ -597,7 +597,7 @@ pages.ability = async () => {
       series.push({ name: m.name, color: m.color, type: "line", w: m.k === "composite" ? 2.6 : 2, gap: 3, pts: S.daily.map((q) => ({ x: T(q.d), y: q[m.k] ?? null, stale: q[m.k + "_stale"] })), fmt: (p) => f1(p.y) + (p.stale ? "（旧）" : "") });
       if (dots) series.push({ name: m.name + " 单次", color: m.color, type: "dot", r: 4, opacity: 0.8, click: (p) => (location.hash = "#/run/" + p.run.id), pts: S.runs.filter((r) => r[m.r] != null).map((r) => ({ x: T(r.d), y: r[m.r], run: r, hollow: r.conf === "低" })) });
     });
-    chart($("#c-score"), { x, series, height: 300, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `${S.labels.goal} ${S.need}`, strong: 1 }].concat(S.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}`, left: 1 }))), vlines: [{ x: T(S.baseline_since), label: S.labels.baseline }, { x: T(S.race.date), label: "比赛", left: 1 }],
+    chart($("#c-score"), { x, series, height: 300, fmt: (v) => (+v).toFixed(0), refs: [{ y: S.need, label: `${S.labels.goal} ${S.need}`, strong: 1 }].concat(S.ref ? [{ y: S.ref, label: `准备线 ${S.ref}` }] : []).concat(S.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}`, left: 1 }))), vlines: [{ x: T(S.baseline_since), label: S.labels.baseline }, { x: T(S.race.date), label: "比赛", left: 1 }],
       dotTip: (p) => `<b>${p.run.d} ${esc(p.run.label)} ${p.run.km} km</b><br>综合 ${f1(p.run.comp)}（${p.run.conf || "–"}）· 有氧 ${f1(p.run.A)} · 阈值 ${f1(p.run.T)} · 速度 ${f1(p.run.S)} · 耐力 ${f1(p.run.E)}<br>${fmtPace(p.run.pace)}/km · HR ${p.run.hr ?? "–"}` });
     const Wk = S.weeks.map((w) => ({ ...w, x: T(w.ws) + 3 * DAY })), wopt = { x, unit: 7 * DAY, snap: 0.5, height: 170 };
     const line = (id, key, color, fmt, extra = {}) => chart($(id), { ...wopt, fmt: (v) => v, ...extra, series: [{ name: "周中位", color, type: "line", gap: 2.5, pts: Wk.filter((w) => w[key]).map((w) => ({ x: w.x, y: w[key] })), fmt }] });

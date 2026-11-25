@@ -291,7 +291,7 @@ function renderKpis() {
   const d = DATA.now.dims, c = d.composite || {};
   const age = (x) => (x ? (x.stale ? `<span class="warn">${x.age} 天前（旧）</span>` : `最近证据 ${x.age} 天前`) : "");
   const rd = DATA.readiness || {};
-  let h = `<div class="kpi main"><div class="l">状态综合跑力</div><div class="v">${f1(c.v)}</div><div class="s">距${DATA.labels.goal} ${gapTo(c.v)}｜4周 ${sgn(c.delta)}｜${DATA.labels.goal}进度 ${rd.progress != null ? Math.round(rd.progress) + "%" : "-"}（难度加权）</div></div>`;
+  let h = `<div class="kpi main"><div class="l">状态综合跑力</div><div class="v">${f1(c.v)}</div><div class="s">距${DATA.labels.goal} ${gapTo(c.v)}${DATA.ref && c.v != null ? `｜距准备线${DATA.ref} ${c.v >= DATA.ref ? "+" : "−"}${Math.abs(c.v - DATA.ref).toFixed(1)}` : ""}｜4周 ${sgn(c.delta)}｜${DATA.labels.goal}进度 ${rd.progress != null ? Math.round(rd.progress) + "%" : "-"}（难度加权）</div></div>`;
   DIMS.slice(1).forEach((m) => { const x = d[m.k]; h += `<div class="kpi"><div class="l"><span class="sw" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${css(m.color)}"></span> ${m.name}</div><div class="v">${f1(x && x.v)}</div><div class="s">${x ? `距${DATA.labels.goal} ${gapTo(x.v)}｜4周 ${sgn(x.delta)}` : "无证据"}<br>${age(x)}</div></div>`; });
   const n = DATA.now;
   h += `<div class="kpi"><div class="l">全马预测</div><div class="v" style="font-size:18px">${fmtDur(n.marathon_daniels)}</div><div class="s">Daniels（状态跑力，乐观上限）<br>Tanda ${fmtDur(n.marathon_tanda)}（8周周均 ${n.k8} km）</div></div>`;
@@ -321,7 +321,7 @@ function renderCharts() {
     if (state.dots || state.sel) series.push({ name: m.name, color: m.color, type: "dot", r: m.k === "composite" ? 3.6 : 2.4, opacity: m.k === "composite" ? 0.95 : 0.7, click: selectRun,
       pts: DATA.runs.filter((r) => r[m.r] != null && (state.dots || r.id === state.sel)).map((r) => ({ x: T(r.d), y: r[m.r], run: r, hollow: r.conf === "低", sel: r.id === state.sel })) });
   });
-  const refs = [{ y: DATA.need, label: `${DATA.labels.goal} ${DATA.need}`, color: "--accent" }].concat(DATA.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}` })));
+  const refs = [{ y: DATA.need, label: `${DATA.labels.goal} ${DATA.need}`, color: "--accent" }].concat(DATA.ref ? [{ y: DATA.ref, label: `准备线 ${DATA.ref}` }] : []).concat(DATA.pbs.map((p) => ({ y: p.v, label: `${p.label} ${p.v}` })));
   chart($("#c-score"), { x, series, refs, height: 320, fmt: (v) => (+v).toFixed(0), dotTip: (p) => runTip(p.run), vlines: [{ x: T(DATA.baseline_since), label: DATA.labels.baseline }, { x: T(DATA.race.date), label: "比赛日" }] });
 
   const W = DATA.weeks.map((w) => ({ ...w, x: T(w.ws) + 3 * DAY }));

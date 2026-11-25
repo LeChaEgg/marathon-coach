@@ -479,6 +479,12 @@ def _dim_evidence(k, d, sc):
     return ""
 
 
+def ref_txt(ctx, v):
+    """“，距准备线 55 −0.9”：第二条参照线（athlete.toml [readiness] reference_vdot），未配置则为空。"""
+    ref = ctx.cfg.get("readiness", {}).get("reference_vdot")
+    return f"，距准备线 {ref:g} {signed(v - ref, 1)}" if ref and v is not None else ""
+
+
 def score_section(ctx, m):
     sc = m.get("score")
     need = goal_vdot(ctx.cfg["race"]["goal_s"])
@@ -515,7 +521,7 @@ def score_section(ctx, m):
         parts = [f"{DIM_LABEL[k]} {st[k]['v']:.1f}" + (f"（{st[k]['age']}天前·旧）" if st[k]["stale"] else "")
                  for k in DIM_ORDER if k in st]
         L.append(f"状态跑力（{ctx.cfg['score'].get('window_days', 42)}天加权，半衰期 {ctx.cfg['score'].get('half_life_days', 14)} 天）："
-                 f"**综合 {st['composite']['v']:.1f}**（距{gl} {signed(st['composite']['v'] - need, 1)}）；" + "，".join(parts) + "\n")
+                 f"**综合 {st['composite']['v']:.1f}**（距{gl} {signed(st['composite']['v'] - need, 1)}{ref_txt(ctx, st['composite']['v'])}）；" + "，".join(parts) + "\n")
     else:
         L.append("")
     return L
@@ -917,8 +923,13 @@ def score_trend(ctx, weeks):
         cell = lambda k: (f"{st[k]['v']:.1f}" + ("*" if st[k].get("stale") else "")) if k in st else "-"
         rows.append([iso_week_label(x["ws"])[5:], cell("composite"), signed(c["v"] - need, 1) if c else "-",
                      cell("aerobic"), cell("threshold"), cell("speed"), cell("endurance"), fnum(best, 1)])
-    out = [f"**跑力评分趋势（周末状态值，VDOT 刻度；{gl} ≈ {need}）**\n",
-           md_table(["周", "综合", f"距{gl}", "有氧", "阈值", "速度", "耐力", "本周单次最高"], rows),
+    ref = ctx.cfg.get("readiness", {}).get("reference_vdot")
+    if ref:
+        for r_, c_ in zip(rows, comps):
+            r_.insert(3, signed(c_ - ref, 1) if c_ else "-")
+    hdr = ["周", "综合", f"距{gl}"] + ([f"距准备线{ref:g}"] if ref else []) + ["有氧", "阈值", "速度", "耐力", "本周单次最高"]
+    out = [f"**跑力评分趋势（周末状态值，VDOT 刻度；{gl} ≈ {need}" + (f"，准备线 {ref:g}" if ref else "") + "）**\n",
+           md_table(hdr, rows),
            f"\n综合 {spark(comps)}；* = 该维度42天内无新证据，沿用90天内的旧值。趋势图见训练中心「能力」页（`python3 -m coach serve`）。\n"]
     return out + week_change_lines(ctx, weeks[-1]) + readiness_lines(ctx, weeks[-1]["we"])
 
@@ -952,7 +963,8 @@ def readiness_lines(ctx, d):
     v = r["volume"]
     gl = goal_label(ctx.cfg)
     L = [f"**{gl}准备度（截至 {d}，模型估计）**\n",
-         f"- 能力：状态综合 {r['now']:.1f}，距{gl} {r['gap']:+.1f} 分。其中 {r['regain_left']:.1f} 分是回到自己的历史峰值 "
+         f"- 能力：状态综合 {r['now']:.1f}，距{gl} {r['gap']:+.1f} 分"
+         + (f"，距准备线 {r['ref']:g} {r['gap_ref']:+.1f} 分（{gl}所需只是平衡点，没有首马折扣的余量）" if r.get("ref") else "") + f"。其中 {r['regain_left']:.1f} 分是回到自己的历史峰值 "
          f"{r['peak']:.1f}（{r['peak_date'] or '配置值'}）以内，{r['new_left']:.1f} 分是超过峰值的新高度（按 {r['above_peak_cost']:g} 倍代价计）。",
          f"- 难度加权进度：{r['progress']:.0f}%（赛季起点 {r['season_start']} 的状态 {r['season_base']:.1f} = 0%，{gl} = 100%）；"
          f"匀速完成所需的进度线今天应在 {r['progress_expected']:.0f}%（{r['expected_now']:.1f}），{'领先' if r['ahead'] >= 0 else '落后'} {abs(r['ahead']):.1f} 分。",
