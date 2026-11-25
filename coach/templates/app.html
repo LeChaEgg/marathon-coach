@@ -571,7 +571,7 @@ pages.season = async () => {
 };
 
 pages.ability = async () => {
-  const d = S.now.dims, range = store.get("ab.range", "12w"), show = store.get("ab.dims", { composite: true, aerobic: true, threshold: true, speed: true, endurance: false }), dots = store.get("ab.dots", false);
+  const d = S.now.dims, range = store.get("ab.range", "12w"), show = store.get("ab.dims", { composite: true, aerobic: true, threshold: true, speed: true, endurance: false }), dots = store.get("ab.dots." + range, range === "2w" || range === "4w");
   const html = `
   <div class="hero"><div><div class="eyebrow">状态跑力 = 42 天加权、半衰期 14 天 · VDOT 刻度 · ${S.labels.goal} ≈ ${S.need}</div><h1>能力</h1></div>
     <div class="seg" id="range">${[["2w", "近 2 周"], ["4w", "近 4 周"], ["12w", "近 12 周"], ["season", "赛季"], ["all", "全部"]].map(([k, n]) => `<button data-r="${k}" class="${k === range ? "on" : ""}">${n}</button>`).join("")}</div></div>
@@ -619,7 +619,7 @@ pages.ability = async () => {
   };
   const mount = () => {
     $("#range").querySelectorAll("button").forEach((b) => (b.onclick = () => { store.set("ab.range", b.dataset.r); render(); }));
-    $("#toggles").querySelectorAll("input").forEach((i) => (i.onchange = () => { if (i.dataset.k === "__dots") store.set("ab.dots", i.checked); else { show[i.dataset.k] = i.checked; store.set("ab.dims", show); } render(); }));
+    $("#toggles").querySelectorAll("input").forEach((i) => (i.onchange = () => { if (i.dataset.k === "__dots") store.set("ab.dots." + range, i.checked); else { show[i.dataset.k] = i.checked; store.set("ab.dims", show); } render(); }));
     draw();
   };
   return { html, mount };
